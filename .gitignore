@@ -1,3 +1,14 @@
-# Project exclude paths
-/target/
-/logs/
+# Ignore the virtual environment folder
+venv/
+.venv/
+env/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.log
+*.csv
+*.pkl
+*.h5
