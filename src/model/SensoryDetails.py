@@ -1,8 +1,20 @@
 class SensoryDetails:
-    def __init__(self, left_sensory_score, right_sensory_score, asymmetry_index, affected_side, severity, asymmetry_label):
+    def __init__(self, left_sensory_score, right_sensory_score, affected_side, asymmetry_label):
         self.left_sensory_score = left_sensory_score
         self.right_sensory_score = right_sensory_score
-        self.asymmetry_index = asymmetry_index
         self.affected_side = affected_side
-        self.severity = severity
         self.asymmetry_label = asymmetry_label
+
+        self.severity = None
+        self.asymmetry_difference = self.calculate_asymmetry_diff()
+        self.asymmetry_index = self.calculate_asymmetry_index()
+
+
+    def calculate_asymmetry_diff(self):
+        self.asymmetry_difference = abs(self.left_sensory_score - self.right_sensory_score)
+        return self.asymmetry_difference
+
+    def calculate_asymmetry_index(self):
+         avg = (self.left_sensory_score + self.right_sensory_score) / 2
+         self.asymmetry_index = self.asymmetry_difference / avg if avg > 0 else 0.0
+         return self.asymmetry_index

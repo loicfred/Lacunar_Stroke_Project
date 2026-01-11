@@ -19,6 +19,12 @@ def generate_single_patient_details(patient_id: int) -> PatientDetails:
                           random.choice([0, 1]),
                           random.choice([0, 1]),
                           random.choice([0, 1]))
+def generate_batch_patient_details(quantity: int) -> list:
+    if quantity > 1000: raise ValueError("Maximum allowed simulated patients is 1000")
+    patient_list = []
+    for i in range(1, quantity + 1):
+        patient_list.append(generate_single_patient_details(i))
+    return patient_list
 
 # This creates a single sensory details object
 def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilateral_probability: float = 0.1) -> SensoryDetails:
@@ -59,12 +65,9 @@ def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilater
         severity = "None"
         label = 0
 
-    # 2. Calculate Asymmetry Index (AI)
-    diff = abs(left_sensory - right_sensory)
-    avg = (left_sensory + right_sensory) / 2
-    asymmetry_index = diff / avg if avg > 0 else 0.0
-
-    return SensoryDetails(left_sensory, right_sensory, asymmetry_index, affected_side, severity, label)
+    details = SensoryDetails(left_sensory, right_sensory, affected_side, label)
+    details.severity = severity
+    return details
 
 
 
