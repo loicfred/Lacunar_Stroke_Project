@@ -22,17 +22,38 @@ import datetime
 
 app = Flask(__name__)
 
+
+
+# ========== CONTROLLER API ==========
+
+
 sample_patient_list = []
 
-# ========== BLUE'S SECTION: DATA & MODELS ==========
 def get_sample_patients():
     global sample_patient_list
     if not sample_patient_list: sample_patient_list = add_sample_patients(5)
     return sample_patient_list
+@app.route('/api/patients', methods=['GET'])  # To get all sample patients
+def api_get_sample_patients():
+    patients = get_sample_patients()
+    return jsonify({
+        "success": True,
+        "count": len(patients),
+        "patients": patients  # Limit response size
+    })
+
 
 def clear_sample_patients():
     global sample_patient_list
     sample_patient_list = []
+@app.route('/api/clear', methods=["GET"]) # To generate new fresh patient data.
+def api_clear_sample_patients():
+    clear_sample_patients()
+    return jsonify({
+        "success": True,
+        "message": "Cleared sample patients"
+    })
+
 
 def add_sample_patients(amount: int = 1):
     global sample_patient_list
@@ -51,11 +72,26 @@ def add_sample_patients(amount: int = 1):
         samplePatients.append(Patient.create(patient, sensory_details))
         sample_patient_list.append(samplePatients)
     return samplePatients
+@app.route('/api/generate-new/<int:count>', methods=["GET"]) # To generate new fresh patient data.
+def api_add_sample_patients(amount):
+    if amount > 100:
+        return jsonify({
+            "success": False,
+            "error": "Maximum 100 patients allowed"
+        }), 400
+    else:
+        new_patients = add_sample_patients(amount)
+        data_source = "patient_generator.py"
+        return jsonify({
+            "success": True,
+            "message": f"Generated {amount} new patients",
+            "data_source": data_source,
+            "new_patient_count": len(new_patients),
+            "new_patients": new_patients
+        })
+
 
 def predict_stroke(patient_data):
-    """
-    GREEN/BLUE: Enhanced prediction with real patient data
-    """
     left_score = patient_data.get("left_sensory_score", 5.0)
     right_score = patient_data.get("right_sensory_score", 5.0)
 
@@ -81,46 +117,8 @@ def predict_stroke(patient_data):
         "score_difference": round(score_diff, 2),
         "model_used": "asymmetry_threshold"
     }
-
-# ========== PURPLE'S SECTION: DASHBOARD ==========
-def get_dashboard_stats():
-    """
-    PURPLE: Replace with real dashboard calculations
-    """
-    patients = get_sample_patients()
-    total = len(patients)
-    asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
-    return {
-        "total_patients": total,
-        "asymmetric_cases": asymmetric,
-        "asymmetric_percentage": (asymmetric/total*100) if total > 0 else 0,
-        "avg_left_score": sum(p.left_sensory_score for p in patients)/total if total > 0 else 0,
-        "avg_right_score": sum(p.right_sensory_score for p in patients)/total if total > 0 else 0
-    }
-
-
-
-# ========== RED'S SECTION: API ENDPOINTS ==========
-@app.route('/')
-def home():
-    """Main dashboard page"""
-    stats = get_dashboard_stats()
-    patients = get_sample_patients()[:5]  # First 5 only for display
-    return render_template('index.html', stats=stats, patients=patients)
-
-
-@app.route('/api/patients', methods=['GET'])
-def api_get_patients(): # To get all sample patients
-    patients = get_sample_patients()
-    return jsonify({
-        "success": True,
-        "count": len(patients),
-        "patients": patients[:20]  # Limit response size
-    })
-
-
-@app.route('/api/predict', methods=['POST'])
-def api_predict(): # Data sent to this endpoint is a patient's data
+@app.route('/api/predict', methods=['POST']) # Send patient's data to return a prediction.
+def api_predict_stroke():
     try:
         patient_data = request.json # Get request body as JSON
         if not patient_data:
@@ -132,18 +130,39 @@ def api_predict(): # Data sent to this endpoint is a patient's data
         return jsonify({
             "success": True, "prediction": prediction, "received_data": patient_data
         })
-
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
-
+def get_dashboard_stats():
+    patients = get_sample_patients()
+    total = len(patients)
+    asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
+    return {
+        "total_patients": total,
+        "asymmetric_cases": asymmetric,
+        "asymmetric_percentage": (asymmetric/total*100) if total > 0 else 0,
+        "avg_left_score": sum(p.left_sensory_score for p in patients)/total if total > 0 else 0,
+        "avg_right_score": sum(p.right_sensory_score for p in patients)/total if total > 0 else 0
+    }
 @app.route('/api/dashboard', methods=['GET'])
-def api_dashboard(): # To get dashboard stats
+def api_get_dashboard_stats(): # The statistics of the dashboard. eg. percentages
     return jsonify({"success": True, "dashboard": get_dashboard_stats()})
 
 
-# ========== GREEN'S SECTION: APP CONFIG ==========
-@app.route('/status')
-def status(): # To check system status (fake)
+# ========== CONTROLLER PAGE ==========
+
+
+@app.route('/')
+def home():
+    stats = get_dashboard_stats()
+    patients = get_sample_patients()[:5]  # First 5 only for display
+    return render_template('index.html', stats=stats, patients=patients)
+
+
+# ========== MISC CONTROLLER ==========
+
+
+@app.route('/status')  # To check system status (fake)
+def status():
     return jsonify({
         "status": "operational",
         "components": {
@@ -156,49 +175,9 @@ def status(): # To check system status (fake)
     })
 
 
-@app.route('/test-data')
-def test_data():
-    patients = get_sample_patients()
-    total = len(patients)
-    asymmetric = sum(1 for p in patients if p.asymmetry_label == 1)
-    return jsonify({
-        "status": "connected",
-        "data_source": "Blue's Patient Generator",
-        "patient_count": total,
-        "asymmetric_cases": asymmetric,
-        "percentage_asymmetric": f"{(asymmetric/total*100):.1f}%",
-        "sample_patients": [p.__dict__ for p in patients][:3]
-    })
-
-@app.route('/api/clear') # To generate new fresh patient data.
-def clear_patients():
-    clear_sample_patients()
-    return jsonify({
-        "success": True,
-        "message": "Cleared sample patients"
-    })
+# ========== ERROR CONTROLLER ==========
 
 
-@app.route('/api/generate-new/<int:count>') # To generate new fresh patient data.
-def generate_new_patients(count):
-    if count > 100:
-        return jsonify({
-            "success": False,
-            "error": "Maximum 100 patients allowed"
-        }), 400
-    else:
-        new_patients = add_sample_patients(count)
-        data_source = "patient_generator.py"
-        return jsonify({
-            "success": True,
-            "message": f"Generated {count} new patients",
-            "data_source": data_source,
-            "new_patient_count": len(new_patients),
-            "new_patients": new_patients
-        })
-
-
-# ========== ERROR HANDLING ==========
 @app.errorhandler(404)
 def not_found(_):
     return jsonify({"success": False, "error": "Endpoint not found"}), 404
@@ -207,7 +186,10 @@ def not_found(_):
 def server_error(_):
     return jsonify({"success": False, "error": "Internal server error"}), 500
 
+
 # ========== MAIN EXECUTION ==========
+
+
 if __name__ == '__main__':
     print("=" * 50)
     print("LACUNAR STROKE DETECTION SYSTEM")
