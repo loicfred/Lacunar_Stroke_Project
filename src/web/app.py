@@ -2,10 +2,14 @@
 Main Flask App for Lacunar Stroke Detection
 Green: This is the foundation. Other members add to marked sections.
 """
+import json
 
 from flask import Flask, render_template, jsonify, request
 import sys
 import os
+
+from model.Patient import Patient
+from model.SensoryDetails import SensoryDetails
 
 current_dir = os.path.dirname(os.path.abspath(__file__))  # src/web/
 parent_dir = os.path.dirname(current_dir)  # src/
@@ -18,32 +22,35 @@ import datetime
 
 app = Flask(__name__)
 
+sample_patient_list = []
+
 # ========== BLUE'S SECTION: DATA & MODELS ==========
 def get_sample_patients():
-    base_patients = patient_gen.generate_batch_patients(50)
+    global sample_patient_list
+    if not sample_patient_list: sample_patient_list = add_sample_patients(5)
+    return sample_patient_list
 
-    enhanced_patients = []
-    for patient in base_patients:
+def clear_sample_patients():
+    global sample_patient_list
+    sample_patient_list = []
+
+def add_sample_patients(amount: int = 1):
+    global sample_patient_list
+    samplePatients = []
+    for patient in patient_gen.generate_batch_patient_details(amount):
         left_score = round(random.uniform(3.0, 10.0), 2)
         right_score = round(random.uniform(3.0, 10.0), 2)
-
         asymmetry = abs(left_score - right_score) > 2.0
-
         if asymmetry:
             affected_side = "Left" if left_score < right_score else "Right"
         else:
             affected_side = "None"
+        asymmetry_label = 1 if asymmetry else 0
+        sensory_details = SensoryDetails(left_score, right_score, affected_side, asymmetry_label)
 
-        enhanced_patient = {
-            **patient,
-            "left_sensory_score": left_score,
-            "right_sensory_score": right_score,
-            "affected_side": affected_side,
-            "asymmetry_label": 1 if asymmetry else 0
-        }
-        enhanced_patients.append(enhanced_patient)
-
-    return enhanced_patients
+        samplePatients.append(Patient.create(patient, sensory_details))
+        sample_patient_list.append(samplePatients)
+    return samplePatients
 
 def predict_stroke(patient_data):
     """
@@ -83,14 +90,15 @@ def get_dashboard_stats():
     patients = get_sample_patients()
     total = len(patients)
     asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
-
     return {
         "total_patients": total,
         "asymmetric_cases": asymmetric,
         "asymmetric_percentage": (asymmetric/total*100) if total > 0 else 0,
-        "avg_left_score": sum(p.get("left_sensory_score", 0) for p in patients)/total if total > 0 else 0,
-        "avg_right_score": sum(p.get("right_sensory_score", 0) for p in patients)/total if total > 0 else 0
+        "avg_left_score": sum(p.left_sensory_score for p in patients)/total if total > 0 else 0,
+        "avg_right_score": sum(p.right_sensory_score for p in patients)/total if total > 0 else 0
     }
+
+
 
 # ========== RED'S SECTION: API ENDPOINTS ==========
 @app.route('/')
@@ -100,9 +108,9 @@ def home():
     patients = get_sample_patients()[:5]  # First 5 only for display
     return render_template('index.html', stats=stats, patients=patients)
 
+
 @app.route('/api/patients', methods=['GET'])
-def api_get_patients():
-    """API to get patient data"""
+def api_get_patients(): # To get all sample patients
     patients = get_sample_patients()
     return jsonify({
         "success": True,
@@ -110,49 +118,32 @@ def api_get_patients():
         "patients": patients[:20]  # Limit response size
     })
 
-@app.route('/api/predict', methods=['POST'])
-def api_predict():
-    """
-    Main prediction endpoint
-    """
-    try:
-        # Get data from request
-        patient_data = request.json
 
+@app.route('/api/predict', methods=['POST'])
+def api_predict(): # Data sent to this endpoint is a patient's data
+    try:
+        patient_data = request.json # Get request body as JSON
         if not patient_data:
             return jsonify({
-                "success": False,
-                "error": "No patient data provided"
+                "success": False, "error": "No patient data provided"
             }), 400
 
-        # Get prediction from model
-        prediction = predict_stroke(patient_data)
-
+        prediction = predict_stroke(patient_data)  # Get prediction from model
         return jsonify({
-            "success": True,
-            "prediction": prediction,
-            "received_data": patient_data
+            "success": True, "prediction": prediction, "received_data": patient_data
         })
 
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+    except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route('/api/dashboard', methods=['GET'])
-def api_dashboard():
-    """Dashboard data API"""
-    stats = get_dashboard_stats()
-    return jsonify({
-        "success": True,
-        "dashboard": stats
-    })
+def api_dashboard(): # To get dashboard stats
+    return jsonify({"success": True, "dashboard": get_dashboard_stats()})
+
 
 # ========== GREEN'S SECTION: APP CONFIG ==========
 @app.route('/status')
-def status():
-    """System status check"""
+def status(): # To check system status (fake)
     return jsonify({
         "status": "operational",
         "components": {
@@ -164,62 +155,48 @@ def status():
         "message": "Green: Flask is running."
     })
 
+
 @app.route('/test-data')
 def test_data():
-    """
-    Test endpoint showing data
-    """
     patients = get_sample_patients()
     total = len(patients)
-    asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
-
+    asymmetric = sum(1 for p in patients if p.asymmetry_label == 1)
     return jsonify({
         "status": "connected",
         "data_source": "Blue's Patient Generator",
         "patient_count": total,
         "asymmetric_cases": asymmetric,
         "percentage_asymmetric": f"{(asymmetric/total*100):.1f}%",
-        "sample_patients": patients[:3]
+        "sample_patients": [p.__dict__ for p in patients][:3]
     })
 
-@app.route('/api/generate-new/<int:count>')
+@app.route('/api/clear') # To generate new fresh patient data.
+def clear_patients():
+    clear_sample_patients()
+    return jsonify({
+        "success": True,
+        "message": "Cleared sample patients"
+    })
+
+
+@app.route('/api/generate-new/<int:count>') # To generate new fresh patient data.
 def generate_new_patients(count):
-    """
-    GREEN: Endpoint to generate fresh patient data
-    """
     if count > 100:
         return jsonify({
             "success": False,
             "error": "Maximum 100 patients allowed"
         }), 400
+    else:
+        new_patients = add_sample_patients(count)
+        data_source = "patient_generator.py"
+        return jsonify({
+            "success": True,
+            "message": f"Generated {count} new patients",
+            "data_source": data_source,
+            "new_patient_count": len(new_patients),
+            "new_patients": new_patients
+        })
 
-
-    new_patients = patient_gen.generate_batch_patients(count)
-    data_source = "patient_generator.py"
-
-    # Add stroke data to each patient
-    enhanced_patients = []
-    for patient in new_patients:
-        left_score = round(random.uniform(3.0, 10.0), 2)
-        right_score = round(random.uniform(3.0, 10.0), 2)
-        asymmetry = abs(left_score - right_score) > 2.0
-
-        enhanced_patient = {
-            **patient,
-            "left_sensory_score": left_score,
-            "right_sensory_score": right_score,
-            "affected_side": "Left" if left_score < right_score else "Right" if asymmetry else "None",
-            "asymmetry_label": 1 if asymmetry else 0
-        }
-        enhanced_patients.append(enhanced_patient)
-
-    return jsonify({
-        "success": True,
-        "message": f"Generated {count} new patients",
-        "data_source": data_source,
-        "patient_count": len(enhanced_patients),
-        "patients": enhanced_patients[:5]
-    })
 
 # ========== ERROR HANDLING ==========
 @app.errorhandler(404)
