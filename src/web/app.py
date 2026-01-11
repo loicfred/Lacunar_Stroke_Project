@@ -25,9 +25,14 @@ except ImportError as e:
     print("⚠️  Using mock data instead")
 
 import random
-from datetime import datetime
+
 
 app = Flask(__name__)
+
+@app.route('/')
+def splash():
+    """Splash screen with Get Started button"""
+    return render_template('splash.html')
 
 # ========== BLUE'S SECTION: DATA & MODELS ==========
 def get_sample_patients():
@@ -166,10 +171,10 @@ def api_predict():
             "received_data": patient_data
         })
 
-    except Exception as e:
+    except Exception as ex:
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": str(ex)
         }), 500
 
 @app.route('/api/dashboard', methods=['GET'])
