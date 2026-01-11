@@ -29,7 +29,7 @@ def get_sample_patients():
     global sample_patient_list
     if not sample_patient_list: sample_patient_list = add_sample_patients(5)
     return sample_patient_list
-@app.route('/api/patients', methods=['GET'])  # To get all sample patients
+@app.route('/api/patients', methods=['GET'])  # To get all sample patients.
 def api_get_sample_patients():
     patients = get_sample_patients()
     return jsonify({
@@ -42,7 +42,7 @@ def api_get_sample_patients():
 def clear_sample_patients():
     global sample_patient_list
     sample_patient_list = []
-@app.route('/api/clear', methods=["GET"]) # To generate new fresh patient data.
+@app.route('/api/clear', methods=["GET"]) # To clear all sample patient data.
 def api_clear_sample_patients():
     clear_sample_patients()
     return jsonify({
@@ -128,6 +128,7 @@ def api_predict_stroke():
         })
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
+
 def get_dashboard_stats():
     patients = get_sample_patients()
     total = len(patients)
@@ -139,7 +140,7 @@ def get_dashboard_stats():
         "avg_left_score": sum(p.left_sensory_score for p in patients)/total if total > 0 else 0,
         "avg_right_score": sum(p.right_sensory_score for p in patients)/total if total > 0 else 0
     }
-@app.route('/api/dashboard', methods=['GET'])
+@app.route('/api/dashboard', methods=['GET']) # To get the average statistics of the sample data.
 def api_get_dashboard_stats(): # The statistics of the dashboard. eg. percentages
     return jsonify({"success": True, "dashboard": get_dashboard_stats()})
 
@@ -147,7 +148,7 @@ def api_get_dashboard_stats(): # The statistics of the dashboard. eg. percentage
 # ========== CONTROLLER PAGE ==========
 
 
-@app.route('/')
+@app.route('/') # Redirect url to the home page
 def home():
     stats = get_dashboard_stats()
     patients = get_sample_patients()[:5]  # First 5 only for display
