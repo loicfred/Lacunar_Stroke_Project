@@ -10,25 +10,17 @@ root_dir = pathlib.Path(__file__).parent.parent
 sys.path.append(str(root_dir))
 
 # Now import from your modules
-from src.data_simulation.patient_generator import generate_patients
-from src.data_simulation.sensory_simulator import generate_sensory_data
+import src.data_simulation.patient_generator as patient_gen
 
 def run_test():
-    # --- 2. GENERATE DATA ---
-    print("🔄 Generating 5 patient profiles...")
-    patients = generate_patients(5)
+    # --- 1. GENERATE DATA ---
+    print("🔄 Generating 5 complete patient profiles...")
 
-    print("🔄 Generating bilateral sensory data...")
-    # This uses the logic we built: asymmetry index, severity, and side labels
-    sensory_data = generate_sensory_data(patients)
+    # 2. Generate the raw data parts
+    patients = patient_gen.generate_batch_patients_data(5)
 
-    # --- 3. MERGE DATA USING PANDAS ---
-    # Convert lists of dictionaries to DataFrames for easy merging
-    df_patients = pd.DataFrame(patients)
-    df_sensory = pd.DataFrame(sensory_data)
-
-    # Perform the merge on patient_id
-    merged_df = pd.merge(df_patients, df_sensory, on="patient_id")
+    # 3. Merge into a master DataFrame
+    merged_df = pd.DataFrame([p.__dict__ for p in patients])
 
     # --- 4. PREPARE EXPORT DIRECTORY ---
     # Ensure the /data/ folder exists so the script doesn't crash

@@ -7,60 +7,28 @@ from flask import Flask, render_template, jsonify, request
 import sys
 import os
 
-# ========== FIX IMPORTS ==========
-# Add parent directory (src) to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))  # src/web/
 parent_dir = os.path.dirname(current_dir)  # src/
 sys.path.insert(0, parent_dir)
 
-try:
-    # Import Blue's functions with a different name to avoid conflict
-    from patient_generator import generate_patient as blue_generate_patient
-    from patient_generator import generate_patients as blue_generate_patients
-    PATIENT_GENERATOR_AVAILABLE = True
-    print("✅ GREEN-BLUE: Connected to patient_generator.py")
-except ImportError as e:
-    PATIENT_GENERATOR_AVAILABLE = False
-    print(f"⚠️  GREEN-BLUE: Import error - {e}")
-    print("⚠️  Using mock data instead")
+import data_simulation.patient_generator as patient_gen
 
 import random
-
+import datetime
 
 app = Flask(__name__)
 
 # ========== BLUE'S SECTION: DATA & MODELS ==========
 def get_sample_patients():
-    """
-    GREEN: Connected to Blue's patient_generator.py
-    Now uses blue_generate_patients to avoid name conflict
-    """
-    if PATIENT_GENERATOR_AVAILABLE:
-        # Use Blue's function to generate patients
-        base_patients = blue_generate_patients(50)
-    else:
-        # Fallback mock data
-        base_patients = []
-        for i in range(1, 51):
-            base_patients.append({
-                "patient_id": i,
-                "age_group": random.choice(["40-49", "50-59", "60-69", "70-79"]),
-                "sex": random.choice(["Male", "Female"]),
-                "hypertension": random.choice([0, 1]),
-                "diabetes": random.choice([0, 1]),
-                "smoking_history": random.choice([0, 1])
-            })
+    base_patients = patient_gen.generate_batch_patients(50)
 
     enhanced_patients = []
     for patient in base_patients:
-        # Add stroke-specific data
         left_score = round(random.uniform(3.0, 10.0), 2)
         right_score = round(random.uniform(3.0, 10.0), 2)
 
-        # Determine asymmetry (difference > 2.0 indicates potential stroke)
         asymmetry = abs(left_score - right_score) > 2.0
 
-        # Determine affected side
         if asymmetry:
             affected_side = "Left" if left_score < right_score else "Right"
         else:
@@ -166,10 +134,10 @@ def api_predict():
             "received_data": patient_data
         })
 
-    except Exception as ex:
+    except Exception as e:
         return jsonify({
             "success": False,
-            "error": str(ex)
+            "error": str(e)
         }), 500
 
 @app.route('/api/dashboard', methods=['GET'])
@@ -189,7 +157,7 @@ def status():
         "status": "operational",
         "components": {
             "flask_app": "running",
-            "data_module": "connected" if PATIENT_GENERATOR_AVAILABLE else "mock_data",
+            "data_module": "connected",
             "prediction_module": "asymmetry_threshold",
             "dashboard_module": "basic_stats"
         },
@@ -206,8 +174,8 @@ def test_data():
     asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
 
     return jsonify({
-        "status": "connected" if PATIENT_GENERATOR_AVAILABLE else "mock_data",
-        "data_source": "Blue's Patient Generator" if PATIENT_GENERATOR_AVAILABLE else "Mock Data",
+        "status": "connected",
+        "data_source": "Blue's Patient Generator",
         "patient_count": total,
         "asymmetric_cases": asymmetric,
         "percentage_asymmetric": f"{(asymmetric/total*100):.1f}%",
@@ -225,23 +193,9 @@ def generate_new_patients(count):
             "error": "Maximum 100 patients allowed"
         }), 400
 
-    if PATIENT_GENERATOR_AVAILABLE:
-        # Use Blue's function directly (renamed to avoid conflict)
-        new_patients = blue_generate_patients(count)
-        data_source = "patient_generator.py"
-    else:
-        # Generate mock data
-        new_patients = []
-        for i in range(1, count + 1):
-            new_patients.append({
-                "patient_id": i,
-                "age_group": random.choice(["40-49", "50-59", "60-69", "70-79"]),
-                "sex": random.choice(["Male", "Female"]),
-                "hypertension": random.choice([0, 1]),
-                "diabetes": random.choice([0, 1]),
-                "smoking_history": random.choice([0, 1])
-            })
-        data_source = "mock_data"
+
+    new_patients = patient_gen.generate_batch_patients(count)
+    data_source = "patient_generator.py"
 
     # Add stroke data to each patient
     enhanced_patients = []
@@ -281,11 +235,6 @@ if __name__ == '__main__':
     print("=" * 50)
     print("LACUNAR STROKE DETECTION SYSTEM")
     print("=" * 50)
-
-    if PATIENT_GENERATOR_AVAILABLE:
-        print("✅ GREEN-BLUE: Patient generator CONNECTED")
-    else:
-        print("⚠️  GREEN-BLUE: Using MOCK DATA (patient_generator.py not found)")
 
     print("\n📊 Test endpoints:")
     print("   http://localhost:5000/              - Dashboard")
