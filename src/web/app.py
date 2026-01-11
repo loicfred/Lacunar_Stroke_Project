@@ -159,7 +159,7 @@ def home():
 # ========== MISC CONTROLLER ==========
 
 
-@app.route('/status')  # To check system status (fake)
+@app.route('/status') # To check system status (fake)
 def status():
     return jsonify({
         "status": "operational",

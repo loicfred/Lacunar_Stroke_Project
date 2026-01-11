@@ -6,6 +6,7 @@ class SensoryDetails:
         self.asymmetry_label = asymmetry_label
 
         self.severity = None
+        self.avg_asymmetry = self.calculate_avg_asymmetry()
         self.asymmetry_difference = self.calculate_asymmetry_diff()
         self.asymmetry_index = self.calculate_asymmetry_index()
 
@@ -14,7 +15,12 @@ class SensoryDetails:
         self.asymmetry_difference = abs(self.left_sensory_score - self.right_sensory_score)
         return self.asymmetry_difference
 
+    def calculate_avg_asymmetry(self):
+        self.avg_asymmetry = (self.left_sensory_score + self.right_sensory_score) / 2
+        return self.asymmetry_difference
+
     def calculate_asymmetry_index(self):
-         avg = (self.left_sensory_score + self.right_sensory_score) / 2
-         self.asymmetry_index = self.asymmetry_difference / avg if avg > 0 else 0.0
-         return self.asymmetry_index
+        avg = self.calculate_avg_asymmetry()
+        asym_diff = self.calculate_asymmetry_diff()
+        self.asymmetry_index = asym_diff / avg if avg > 0 else 0.0
+        return self.asymmetry_index
