@@ -4,28 +4,56 @@ Green: This is the foundation. Other members add to marked sections.
 """
 
 from flask import Flask, render_template, jsonify, request
-import json
-# GREEN: Add these imports to connect with Blue's work
-import patient_generator
-import random  # For generating sensory scores
+import sys
+import os
 
-from data_simulation.patient_generator import generate_patients
+# ========== FIX IMPORTS ==========
+# Add parent directory (src) to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))  # src/web/
+parent_dir = os.path.dirname(current_dir)  # src/
+sys.path.insert(0, parent_dir)
+
+try:
+    # Import Blue's functions with a different name to avoid conflict
+    from patient_generator import generate_patient as blue_generate_patient
+    from patient_generator import generate_patients as blue_generate_patients
+    PATIENT_GENERATOR_AVAILABLE = True
+    print("✅ GREEN-BLUE: Connected to patient_generator.py")
+except ImportError as e:
+    PATIENT_GENERATOR_AVAILABLE = False
+    print(f"⚠️  GREEN-BLUE: Import error - {e}")
+    print("⚠️  Using mock data instead")
+
+import random
+from datetime import datetime
 
 app = Flask(__name__)
 
 # ========== BLUE'S SECTION: DATA & MODELS ==========
-# Blue will implement these functions - NOW CONNECTED!
-def get_sample_patients(generate_patients=None):
+def get_sample_patients():
     """
-    GREEN: Now connected to Blue's patient_generator.py
-    Generates 50 patients with realistic stroke data
+    GREEN: Connected to Blue's patient_generator.py
+    Now uses blue_generate_patients to avoid name conflict
     """
-    # Use Blue's function to generate patients
-    base_patients = generate_patients(50)
+    if PATIENT_GENERATOR_AVAILABLE:
+        # Use Blue's function to generate patients
+        base_patients = blue_generate_patients(50)
+    else:
+        # Fallback mock data
+        base_patients = []
+        for i in range(1, 51):
+            base_patients.append({
+                "patient_id": i,
+                "age_group": random.choice(["40-49", "50-59", "60-69", "70-79"]),
+                "sex": random.choice(["Male", "Female"]),
+                "hypertension": random.choice([0, 1]),
+                "diabetes": random.choice([0, 1]),
+                "smoking_history": random.choice([0, 1])
+            })
 
     enhanced_patients = []
     for patient in base_patients:
-        # Add stroke-specific data (simulated for now)
+        # Add stroke-specific data
         left_score = round(random.uniform(3.0, 10.0), 2)
         right_score = round(random.uniform(3.0, 10.0), 2)
 
@@ -39,7 +67,7 @@ def get_sample_patients(generate_patients=None):
             affected_side = "None"
 
         enhanced_patient = {
-            **patient,  # Keep all Blue's data
+            **patient,
             "left_sensory_score": left_score,
             "right_sensory_score": right_score,
             "affected_side": affected_side,
@@ -52,7 +80,6 @@ def get_sample_patients(generate_patients=None):
 def predict_stroke(patient_data):
     """
     GREEN/BLUE: Enhanced prediction with real patient data
-    Uses the asymmetry logic from above
     """
     left_score = patient_data.get("left_sensory_score", 5.0)
     right_score = patient_data.get("right_sensory_score", 5.0)
@@ -61,7 +88,7 @@ def predict_stroke(patient_data):
 
     # Calculate confidence based on score difference
     score_diff = abs(left_score - right_score)
-    confidence = min(0.95, 0.5 + (score_diff / 10))  # Scale to 0.5-0.95
+    confidence = min(0.95, 0.5 + (score_diff / 10))
 
     # Determine risk level
     if asymmetry_detected:
@@ -77,15 +104,13 @@ def predict_stroke(patient_data):
         "risk_level": risk_level,
         "affected_side": affected_side,
         "score_difference": round(score_diff, 2),
-        "model_used": "asymmetry_threshold"  # Will be replaced with real ML model
+        "model_used": "asymmetry_threshold"
     }
 
 # ========== PURPLE'S SECTION: DASHBOARD ==========
-# Purple will implement these visualizations
 def get_dashboard_stats():
     """
     PURPLE: Replace with real dashboard calculations
-    Returns basic statistics for the dashboard.
     """
     patients = get_sample_patients()
     total = len(patients)
@@ -100,30 +125,27 @@ def get_dashboard_stats():
     }
 
 # ========== RED'S SECTION: API ENDPOINTS ==========
-# Red will enhance these endpoints
-
 @app.route('/')
 def home():
-    """Main dashboard page - Purple will style this"""
+    """Main dashboard page"""
     stats = get_dashboard_stats()
-    patients = get_sample_patients()
+    patients = get_sample_patients()[:5]  # First 5 only for display
     return render_template('index.html', stats=stats, patients=patients)
 
 @app.route('/api/patients', methods=['GET'])
 def api_get_patients():
-    """API to get patient data - Blue provides real data here"""
+    """API to get patient data"""
     patients = get_sample_patients()
     return jsonify({
         "success": True,
         "count": len(patients),
-        "patients": patients
+        "patients": patients[:20]  # Limit response size
     })
 
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
     """
-    RED/BLUE: Main prediction endpoint
-    Blue provides model, Red handles API logic
+    Main prediction endpoint
     """
     try:
         # Get data from request
@@ -152,7 +174,7 @@ def api_predict():
 
 @app.route('/api/dashboard', methods=['GET'])
 def api_dashboard():
-    """Dashboard data API - Purple enhances this"""
+    """Dashboard data API"""
     stats = get_dashboard_stats()
     return jsonify({
         "success": True,
@@ -160,63 +182,70 @@ def api_dashboard():
     })
 
 # ========== GREEN'S SECTION: APP CONFIG ==========
-# Green handles all Flask setup and configuration
-
 @app.route('/status')
 def status():
-    """System status check - All members should ensure their parts work"""
+    """System status check"""
     return jsonify({
         "status": "operational",
         "components": {
             "flask_app": "running",
-            "data_module": "mock_data" if len(get_sample_patients()) > 0 else "not_implemented",
-            "prediction_module": "mock_predictions",
+            "data_module": "connected" if PATIENT_GENERATOR_AVAILABLE else "mock_data",
+            "prediction_module": "asymmetry_threshold",
             "dashboard_module": "basic_stats"
         },
-        "message": "Green: Flask is running. Other members: implement your sections above."
+        "message": "Green: Flask is running."
     })
 
 @app.route('/test-data')
 def test_data():
     """
-    Test endpoint showing REAL data from Blue's generator
+    Test endpoint showing data
     """
-    # Generate fresh sample data
     patients = get_sample_patients()
-
-    # Get statistics
     total = len(patients)
     asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
 
     return jsonify({
-        "status": "connected",
-        "data_source": "Blue's Patient Generator (patient_generator.py)",
+        "status": "connected" if PATIENT_GENERATOR_AVAILABLE else "mock_data",
+        "data_source": "Blue's Patient Generator" if PATIENT_GENERATOR_AVAILABLE else "Mock Data",
         "patient_count": total,
         "asymmetric_cases": asymmetric,
         "percentage_asymmetric": f"{(asymmetric/total*100):.1f}%",
-        "sample_patients": patients[:3],  # Show first 3 as sample
-        "note": "Green: Successfully connected to Blue's data generator!"
+        "sample_patients": patients[:3]
     })
 
 @app.route('/api/generate-new/<int:count>')
 def generate_new_patients(count):
     """
-    GREEN: Endpoint to generate fresh patient data on demand
-    Connects Flask app to Blue's generator via API
+    GREEN: Endpoint to generate fresh patient data
     """
-    if count > 1000:
+    if count > 100:
         return jsonify({
             "success": False,
-            "error": "Maximum 1000 patients allowed"
+            "error": "Maximum 100 patients allowed"
         }), 400
 
-    # Use Blue's function directly
-    new_patients = generate_patients(count)
+    if PATIENT_GENERATOR_AVAILABLE:
+        # Use Blue's function directly (renamed to avoid conflict)
+        new_patients = blue_generate_patients(count)
+        data_source = "patient_generator.py"
+    else:
+        # Generate mock data
+        new_patients = []
+        for i in range(1, count + 1):
+            new_patients.append({
+                "patient_id": i,
+                "age_group": random.choice(["40-49", "50-59", "60-69", "70-79"]),
+                "sex": random.choice(["Male", "Female"]),
+                "hypertension": random.choice([0, 1]),
+                "diabetes": random.choice([0, 1]),
+                "smoking_history": random.choice([0, 1])
+            })
+        data_source = "mock_data"
 
     # Add stroke data to each patient
     enhanced_patients = []
     for patient in new_patients:
-        # Add simulated stroke metrics
         left_score = round(random.uniform(3.0, 10.0), 2)
         right_score = round(random.uniform(3.0, 10.0), 2)
         asymmetry = abs(left_score - right_score) > 2.0
@@ -233,37 +262,37 @@ def generate_new_patients(count):
     return jsonify({
         "success": True,
         "message": f"Generated {count} new patients",
-        "data_source": "patient_generator.py",
+        "data_source": data_source,
         "patient_count": len(enhanced_patients),
-        "patients": enhanced_patients[:5]  # Return first 5 as sample
+        "patients": enhanced_patients[:5]
     })
 
 # ========== ERROR HANDLING ==========
 @app.errorhandler(404)
-def not_found(error):
+def not_found(_):
     return jsonify({"success": False, "error": "Endpoint not found"}), 404
 
 @app.errorhandler(500)
-def server_error(error):
+def server_error(_):
     return jsonify({"success": False, "error": "Internal server error"}), 500
 
-# ========== MAIN EXECUTION ==========
 # ========== MAIN EXECUTION ==========
 if __name__ == '__main__':
     print("=" * 50)
     print("LACUNAR STROKE DETECTION SYSTEM")
     print("=" * 50)
-    print("Green: Flask app starting on http://localhost:5000")
-    print("\n✅ TEAM INTEGRATION STATUS:")
-    print(f"1. ✅ GREEN: Flask app running")
-    print(f"2. ✅ GREEN-BLUE: Connected to patient_generator.py")
-    print(f"3. ⏳ BLUE: Data generation active (50 sample patients)")
-    print(f"4. ⏳ RED: API endpoints ready for ML integration")
-    print(f"5. ⏳ PURPLE: Dashboard ready for styling")
+
+    if PATIENT_GENERATOR_AVAILABLE:
+        print("✅ GREEN-BLUE: Patient generator CONNECTED")
+    else:
+        print("⚠️  GREEN-BLUE: Using MOCK DATA (patient_generator.py not found)")
+
     print("\n📊 Test endpoints:")
-    print("   http://localhost:5000/test-data          - Check Blue's data")
-    print("   http://localhost:5000/api/patients       - Get all patients")
-    print("   http://localhost:5000/api/generate-new/10 - Generate 10 new patients")
+    print("   http://localhost:5000/              - Dashboard")
+    print("   http://localhost:5000/status        - System status")
+    print("   http://localhost:5000/test-data     - Check Blue's data")
+    print("   http://localhost:5000/api/patients  - Get all patients")
+    print("   http://localhost:5000/api/generate-new/10 - Generate new patients")
     print("=" * 50)
 
     app.run(host="0.0.0.0", debug=True, port=5000)
