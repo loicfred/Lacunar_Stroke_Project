@@ -1,7 +1,6 @@
 from model.PatientDetails import PatientDetails
 from model.SensoryDetails import SensoryDetails
 
-
 class Patient(PatientDetails, SensoryDetails):
     def __init__(self, patient_id, age_group, sex, hypertension, diabetes, smoking_history, left_sensory_score, right_sensory_score, affected_side, asymmetry_label, severity):
         PatientDetails.__init__(self, patient_id, age_group, sex, hypertension, diabetes, smoking_history)

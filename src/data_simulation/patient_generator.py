@@ -26,6 +26,7 @@ def generate_batch_patient_details(quantity: int) -> list:
         patient_list.append(generate_single_patient_details(i))
     return patient_list
 
+
 # This creates a single sensory details object
 def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilateral_probability: float = 0.1) -> SensoryDetails:
     base_sensation = random.uniform(7.0, 10.0) # 7-10 means healthy
@@ -69,8 +70,6 @@ def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilater
     details.severity = severity
     print(details.__dict__)
     return details
-
-
 
 
 # This creates X number of patients with their details and sensory details.
