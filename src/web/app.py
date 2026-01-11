@@ -2,9 +2,10 @@
 Main Flask App for Lacunar Stroke Detection
 Green: This is the foundation. Other members add to marked sections.
 """
-import json
 
 from flask import Flask, render_template, jsonify, request
+import data_simulation.patient_generator as patient_gen
+import random
 import sys
 import os
 
@@ -15,13 +16,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))  # src/web/
 parent_dir = os.path.dirname(current_dir)  # src/
 sys.path.insert(0, parent_dir)
 
-import data_simulation.patient_generator as patient_gen
-
-import random
-import datetime
 
 app = Flask(__name__)
-
 
 
 # ========== CONTROLLER API ==========
