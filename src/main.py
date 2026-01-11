@@ -1,3 +1,2 @@
-import runpy
+print("Hello World")
 
-runpy.run_module("web.app", run_name="__main__")

@@ -5,31 +5,79 @@ Green: This is the foundation. Other members add to marked sections.
 
 from flask import Flask, render_template, jsonify, request
 import json
+# GREEN: Add these imports to connect with Blue's work
+import patient_generator
+import random  # For generating sensory scores
+
+from data_simulation.patient_generator import generate_patients
 
 app = Flask(__name__)
 
 # ========== BLUE'S SECTION: DATA & MODELS ==========
-# Blue will implement these functions
-def get_sample_patients():
+# Blue will implement these functions - NOW CONNECTED!
+def get_sample_patients(generate_patients=None):
     """
-    BLUE: Replace this with real data from patient_generator.py
-    Currently returns example data from the screenshot.
+    GREEN: Now connected to Blue's patient_generator.py
+    Generates 50 patients with realistic stroke data
     """
-    return [
-        {"patient_id": 1, "age_group": "60-69", "sex": "Male", "hypertension": 0, "diabetes": 1, "smoking_history": 1, "left_sensory_score": 5.6, "right_sensory_score": 8.39, "affected_side": "Left", "asymmetry_label": 1},
-        {"patient_id": 2, "age_group": "80-89", "sex": "Male", "hypertension": 0, "diabetes": 1, "smoking_history": 0, "left_sensory_score": 9.18, "right_sensory_score": 9.21, "affected_side": "None", "asymmetry_label": 0}
-    ]
+    # Use Blue's function to generate patients
+    base_patients = generate_patients(50)
+
+    enhanced_patients = []
+    for patient in base_patients:
+        # Add stroke-specific data (simulated for now)
+        left_score = round(random.uniform(3.0, 10.0), 2)
+        right_score = round(random.uniform(3.0, 10.0), 2)
+
+        # Determine asymmetry (difference > 2.0 indicates potential stroke)
+        asymmetry = abs(left_score - right_score) > 2.0
+
+        # Determine affected side
+        if asymmetry:
+            affected_side = "Left" if left_score < right_score else "Right"
+        else:
+            affected_side = "None"
+
+        enhanced_patient = {
+            **patient,  # Keep all Blue's data
+            "left_sensory_score": left_score,
+            "right_sensory_score": right_score,
+            "affected_side": affected_side,
+            "asymmetry_label": 1 if asymmetry else 0
+        }
+        enhanced_patients.append(enhanced_patient)
+
+    return enhanced_patients
 
 def predict_stroke(patient_data):
     """
-    BLUE/RED: Replace with actual ML model prediction
-    Returns mock prediction for now.
+    GREEN/BLUE: Enhanced prediction with real patient data
+    Uses the asymmetry logic from above
     """
+    left_score = patient_data.get("left_sensory_score", 5.0)
+    right_score = patient_data.get("right_sensory_score", 5.0)
+
+    asymmetry_detected = abs(left_score - right_score) > 2.0
+
+    # Calculate confidence based on score difference
+    score_diff = abs(left_score - right_score)
+    confidence = min(0.95, 0.5 + (score_diff / 10))  # Scale to 0.5-0.95
+
+    # Determine risk level
+    if asymmetry_detected:
+        risk_level = "high"
+        affected_side = "Left" if left_score < right_score else "Right"
+    else:
+        risk_level = "low"
+        affected_side = "None"
+
     return {
-        "asymmetry_detected": patient_data.get("asymmetry_label", 0) == 1,
-        "confidence": 0.85,
-        "risk_level": "high" if patient_data.get("asymmetry_label", 0) == 1 else "low",
-        "model_used": "random_forest"  # Blue: Change to actual model name
+        "asymmetry_detected": asymmetry_detected,
+        "confidence": round(confidence, 2),
+        "risk_level": risk_level,
+        "affected_side": affected_side,
+        "score_difference": round(score_diff, 2),
+        "model_used": "asymmetry_threshold"  # Will be replaced with real ML model
     }
 
 # ========== PURPLE'S SECTION: DASHBOARD ==========
