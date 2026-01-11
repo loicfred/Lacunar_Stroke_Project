@@ -6,14 +6,14 @@ import pandas as pd
 import data_simulation.patient_generator as patient_gen
 
 def run_data_pipeline(amount=1000, output_dir="master_data"):
-    if not os.path.exists(output_dir): os.makedirs(output_dir) # 1. Ensure output directory exists
+    if not os.path.exists(output_dir): os.makedirs(output_dir) # Ensure output directory exists
 
     print(f"🚀 Starting Pipeline: Generating {amount} records...")
 
-    # 2. Generate the raw data parts
+    # Generate a list of patients with complete sensory data
     patients = patient_gen.generate_batch_patients_data(amount)
 
-    # 3. Merge into a master DataFrame
+    # Transform the list of patients into a master DataFrame
     master_df = pd.DataFrame([p.__dict__ for p in patients])
 
     # Save as CSV for the Random Forest / RNN models

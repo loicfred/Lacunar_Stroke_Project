@@ -133,7 +133,7 @@ def api_predict_stroke():
 def get_dashboard_stats():
     patients = get_sample_patients()
     total = len(patients)
-    asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
+    asymmetric = sum(1 for p in patients if p.asymmetry_label == 1)
     return {
         "total_patients": total,
         "asymmetric_cases": asymmetric,
