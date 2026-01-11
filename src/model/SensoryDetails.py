@@ -17,7 +17,7 @@ class SensoryDetails:
 
     def calculate_avg_asymmetry(self):
         self.avg_asymmetry = (self.left_sensory_score + self.right_sensory_score) / 2
-        return self.asymmetry_difference
+        return self.avg_asymmetry
 
     def calculate_asymmetry_index(self):
         avg = self.calculate_avg_asymmetry()
