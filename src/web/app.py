@@ -161,4 +161,4 @@ if __name__ == '__main__':
     print("4. RED: Enhance API endpoints and error handling")
     print("=" * 50)
 
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0",debug=True, port=5000)
