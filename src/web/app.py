@@ -29,11 +29,6 @@ import random
 
 app = Flask(__name__)
 
-@app.route('/')
-def splash():
-    """Splash screen with Get Started button"""
-    return render_template('splash.html')
-
 # ========== BLUE'S SECTION: DATA & MODELS ==========
 def get_sample_patients():
     """
