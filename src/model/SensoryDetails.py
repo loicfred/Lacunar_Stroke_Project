@@ -5,10 +5,10 @@ class SensoryDetails:
         self.affected_side = affected_side
         self.asymmetry_label = asymmetry_label
 
-        self.severity = None
         self.avg_asymmetry = self.calculate_avg_asymmetry()
         self.asymmetry_difference = self.calculate_asymmetry_diff()
         self.asymmetry_index = self.calculate_asymmetry_index()
+        self.severity = None
 
 
     def calculate_asymmetry_diff(self):

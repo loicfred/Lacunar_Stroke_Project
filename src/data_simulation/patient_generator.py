@@ -67,6 +67,7 @@ def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilater
 
     details = SensoryDetails(left_sensory, right_sensory, affected_side, label)
     details.severity = severity
+    print(details.__dict__)
     return details
 
 
@@ -80,6 +81,7 @@ def generate_batch_patients_data(quantity: int = 1000) -> list:
     for i in range(1, quantity + 1):
         patient = generate_single_patient_details(i)
         sensory = generate_single_sensory_details()
+        print(i)
 
         patient_list.append(Patient.create(patient, sensory))
 
