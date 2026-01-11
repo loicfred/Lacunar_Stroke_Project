@@ -130,6 +130,7 @@ def api_predict_stroke():
     except Exception as e: return jsonify({"success": False, "error": str(e)}), 500
 
 
+
 def get_dashboard_stats():
     patients = get_sample_patients()
     total = len(patients)
@@ -144,6 +145,8 @@ def get_dashboard_stats():
 @app.route('/api/dashboard', methods=['GET']) # To get the average statistics of the sample data.
 def api_get_dashboard_stats(): # The statistics of the dashboard. for example: percentages
     return jsonify({"success": True, "dashboard": get_dashboard_stats()})
+
+
 
 
 # ========== CONTROLLER PAGE ==========
