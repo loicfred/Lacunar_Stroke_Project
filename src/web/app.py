@@ -179,12 +179,63 @@ def status():
 @app.route('/test-data')
 def test_data():
     """
-    Test endpoint showing the data from screenshot
-    Blue: Connect your real data generator here
+    Test endpoint showing REAL data from Blue's generator
     """
+    # Generate fresh sample data
+    patients = get_sample_patients()
+
+    # Get statistics
+    total = len(patients)
+    asymmetric = sum(1 for p in patients if p.get("asymmetry_label") == 1)
+
     return jsonify({
-        "sample_data_from_screenshot": get_sample_patients(),
-        "note": "Blue: Replace get_sample_patients() with real data generation"
+        "status": "connected",
+        "data_source": "Blue's Patient Generator (patient_generator.py)",
+        "patient_count": total,
+        "asymmetric_cases": asymmetric,
+        "percentage_asymmetric": f"{(asymmetric/total*100):.1f}%",
+        "sample_patients": patients[:3],  # Show first 3 as sample
+        "note": "Green: Successfully connected to Blue's data generator!"
+    })
+
+@app.route('/api/generate-new/<int:count>')
+def generate_new_patients(count):
+    """
+    GREEN: Endpoint to generate fresh patient data on demand
+    Connects Flask app to Blue's generator via API
+    """
+    if count > 1000:
+        return jsonify({
+            "success": False,
+            "error": "Maximum 1000 patients allowed"
+        }), 400
+
+    # Use Blue's function directly
+    new_patients = generate_patients(count)
+
+    # Add stroke data to each patient
+    enhanced_patients = []
+    for patient in new_patients:
+        # Add simulated stroke metrics
+        left_score = round(random.uniform(3.0, 10.0), 2)
+        right_score = round(random.uniform(3.0, 10.0), 2)
+        asymmetry = abs(left_score - right_score) > 2.0
+
+        enhanced_patient = {
+            **patient,
+            "left_sensory_score": left_score,
+            "right_sensory_score": right_score,
+            "affected_side": "Left" if left_score < right_score else "Right" if asymmetry else "None",
+            "asymmetry_label": 1 if asymmetry else 0
+        }
+        enhanced_patients.append(enhanced_patient)
+
+    return jsonify({
+        "success": True,
+        "message": f"Generated {count} new patients",
+        "data_source": "patient_generator.py",
+        "patient_count": len(enhanced_patients),
+        "patients": enhanced_patients[:5]  # Return first 5 as sample
     })
 
 # ========== ERROR HANDLING ==========
@@ -197,16 +248,22 @@ def server_error(error):
     return jsonify({"success": False, "error": "Internal server error"}), 500
 
 # ========== MAIN EXECUTION ==========
+# ========== MAIN EXECUTION ==========
 if __name__ == '__main__':
     print("=" * 50)
     print("LACUNAR STROKE DETECTION SYSTEM")
     print("=" * 50)
     print("Green: Flask app starting on http://localhost:5000")
-    print("\nTeam Integration Points:")
-    print("1. BLUE: Implement get_sample_patients() with real data")
-    print("2. BLUE/RED: Implement predict_stroke() with ML models")
-    print("3. PURPLE: Enhance get_dashboard_stats() and templates")
-    print("4. RED: Enhance API endpoints and error handling")
+    print("\n✅ TEAM INTEGRATION STATUS:")
+    print(f"1. ✅ GREEN: Flask app running")
+    print(f"2. ✅ GREEN-BLUE: Connected to patient_generator.py")
+    print(f"3. ⏳ BLUE: Data generation active (50 sample patients)")
+    print(f"4. ⏳ RED: API endpoints ready for ML integration")
+    print(f"5. ⏳ PURPLE: Dashboard ready for styling")
+    print("\n📊 Test endpoints:")
+    print("   http://localhost:5000/test-data          - Check Blue's data")
+    print("   http://localhost:5000/api/patients       - Get all patients")
+    print("   http://localhost:5000/api/generate-new/10 - Generate 10 new patients")
     print("=" * 50)
 
-    app.run(host="0.0.0.0",debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000)
