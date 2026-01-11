@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "data_simulation", "master_data", "stroke_training_data.csv")
 
 # This points to: .../Lacunar_Stroke_Project/src/model/stroke_model.pkl
-MODEL_SAVE_PATH = os.path.join(BASE_DIR, "model", "stroke_model.pkl")
+MODEL_SAVE_PATH = os.path.join(BASE_DIR, "model", "../../models/stroke_model.pkl")
 
 def train_production_model():
     """
