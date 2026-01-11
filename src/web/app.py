@@ -53,7 +53,7 @@ def api_clear_sample_patients():
 
 def add_sample_patients(amount: int = 1):
     global sample_patient_list
-    samplePatients = []
+    new_patients_list = []
     for patient in patient_gen.generate_batch_patient_details(amount):
         left_score = round(random.uniform(3.0, 10.0), 2)
         right_score = round(random.uniform(3.0, 10.0), 2)
@@ -65,10 +65,11 @@ def add_sample_patients(amount: int = 1):
         asymmetry_label = 1 if asymmetry else 0
         sensory_details = SensoryDetails(left_score, right_score, affected_side, asymmetry_label)
 
-        samplePatients.append(Patient.create(patient, sensory_details))
-        sample_patient_list.append(samplePatients)
-    return samplePatients
-@app.route('/api/generate-new/<int:count>', methods=["GET"]) # To generate new fresh patient data.
+        new_patient = Patient.create(patient, sensory_details)
+        new_patients_list.append(new_patient)
+        sample_patient_list.append(new_patient)
+    return new_patients_list
+@app.route('/api/generate-new/<int:amount>', methods=["GET"]) # To generate new fresh patient data.
 def api_add_sample_patients(amount):
     if amount > 100:
         return jsonify({
