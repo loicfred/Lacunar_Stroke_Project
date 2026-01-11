@@ -54,7 +54,7 @@ def run_test():
     print(f"📍 CSV Path: {csv_path}")
     print(f"📍 JSON Path: {json_path}")
     print("\nPreview of first 2 records:")
-    print(merged_df.head(2).to_string())
+    print(merged_df.head(4).to_string())
 
 if __name__ == "__main__":
     run_test()
