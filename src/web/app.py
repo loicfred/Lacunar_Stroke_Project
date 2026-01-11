@@ -142,7 +142,7 @@ def get_dashboard_stats():
         "avg_right_score": sum(p.right_sensory_score for p in patients)/total if total > 0 else 0
     }
 @app.route('/api/dashboard', methods=['GET']) # To get the average statistics of the sample data.
-def api_get_dashboard_stats(): # The statistics of the dashboard. eg. percentages
+def api_get_dashboard_stats(): # The statistics of the dashboard. for example: percentages
     return jsonify({"success": True, "dashboard": get_dashboard_stats()})
 
 
