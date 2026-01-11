@@ -65,6 +65,10 @@ def generate_sensory_profile(
         severity = "None"
         label = 0
 
+    diff = abs(left_sensory - right_sensory)
+    avg = (left_sensory + right_sensory) / 2
+    asymmetry_index = diff / avg if avg > 0 else 0.0
+
     return {
         # Link sensory data to patient profile
         "patient_id": patient_id,
@@ -72,6 +76,8 @@ def generate_sensory_profile(
         # Bilateral sensory perception scores
         "left_sensory_score": round(left_sensory, 2),
         "right_sensory_score": round(right_sensory, 2),
+
+        "asymmetry_index": round(asymmetry_index, 4), # Normalized feature
 
         # Indicates which side is affected, if any
         "affected_side": affected_side,
