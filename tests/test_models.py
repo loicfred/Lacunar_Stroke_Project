@@ -1,7 +1,6 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from src.data_simulation.patient_generator import generate_patients
-from src.data_simulation.sensory_simulator import generate_sensory_data
+import src.data_simulation.patient_generator as patient_gen
 
 def run_comprehensive_test():
     print("🧪 Starting Multi-Class Model Test (Normal vs. Unilateral vs. Bilateral)...")
@@ -9,11 +8,9 @@ def run_comprehensive_test():
     # 1. GENERATE TRAINING DATA
     # We generate 500 patients to ensure the model sees enough Bilateral (10%) cases
     print("📊 Generating 500 training samples...")
-    raw_patients = generate_patients(500)
-    # Using our new logic with asymmetric_probability=0.4 and bilateral_probability=0.1
-    raw_sensory = generate_sensory_data(raw_patients)
+    raw_patients = patient_gen.generate_batch_patients_data(500)
 
-    df = pd.DataFrame(raw_sensory)
+    df = pd.DataFrame([p.__dict__ for p in raw_patients])
 
     # 2. TRAIN THE MODEL
     X = df[['left_sensory_score', 'right_sensory_score', 'asymmetry_index']]

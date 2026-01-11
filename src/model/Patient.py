@@ -1,23 +1,15 @@
 import json
 
-with open("patient.json", "r") as f:
-    data = json.load(f)
+from model.PatientDetails import PatientDetails
+from model.SensoryDetails import SensoryDetails
 
-class Patient:
+
+class Patient(PatientDetails, SensoryDetails):
     def __init__(self, patient_id, age_group, sex, hypertension, diabetes, smoking_history, left_sensory_score, right_sensory_score, asymmetry_index, affected_side, severity, asymmetry_label):
-        self.patient_id = patient_id
-        self.age_group = age_group
-        self.sex = sex
-        self.hypertension = hypertension
-        self.diabetes = diabetes
-        self.smoking_history = smoking_history
-        self.left_sensory_score = left_sensory_score
-        self.right_sensory_score = right_sensory_score
-        self.asymmetry_index = asymmetry_index
-        self.affected_side = affected_side
-        self.severity = severity
-        self.asymmetry_label = asymmetry_label
+        PatientDetails.__init__(self, patient_id, age_group, sex, hypertension, diabetes, smoking_history)
+        SensoryDetails.__init__(self, left_sensory_score, right_sensory_score, asymmetry_index, affected_side, severity, asymmetry_label)
 
     @staticmethod
-    def get(a, b):
-        return a + b
+    def create(p_details, s_details):
+        return Patient(p_details.patient_id, p_details.age_group, p_details.sex, p_details.hypertension, p_details.diabetes, p_details.smoking_history,
+                       s_details.left_sensory_score, s_details.right_sensory_score, s_details.asymmetry_index, s_details.affected_side, s_details.severity, s_details.asymmetry_label)

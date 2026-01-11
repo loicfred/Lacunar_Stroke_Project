@@ -1,35 +1,29 @@
+# -----------------------------------
+# This pipeline is used to generate a JSON and CSV of simulated patient data.
+# -----------------------------------
 import os
 import pandas as pd
-from src.data_simulation.patient_generator import generate_patients
-from src.data_simulation.sensory_simulator import generate_sensory_data
+import data_simulation.patient_generator as patient_gen
 
-def run_data_pipeline(num_patients=1000, output_dir="master_data"):
-    """
-    The master pipeline to generate, merge, and save the simulation dataset.
-    """
-    # 1. Ensure output directory exists
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+def run_data_pipeline(amount=1000, output_dir="master_data"):
+    if not os.path.exists(output_dir): os.makedirs(output_dir) # 1. Ensure output directory exists
 
-    print(f"🚀 Starting Pipeline: Generating {num_patients} records...")
+    print(f"🚀 Starting Pipeline: Generating {amount} records...")
 
     # 2. Generate the raw data parts
-    patients = generate_patients(num_patients)
-    sensory = generate_sensory_data(patients)
+    patients = patient_gen.generate_batch_patients_data(amount)
 
     # 3. Merge into a master DataFrame
-    df_p = pd.DataFrame(patients)
-    df_s = pd.DataFrame(sensory)
-    master_df = pd.merge(df_p, df_s, on="patient_id")
+    master_df = pd.DataFrame([p.__dict__ for p in patients])
 
-    # 4. Save the "Gold Standard" datasets
-    # CSV for the Random Forest / RNN models
+    # Save as CSV for the Random Forest / RNN models
     master_df.to_csv(os.path.join(output_dir, "stroke_training_data.csv"), index=False)
 
-    # JSON for the Flask Dashboard
+    # Save as JSON for the Flask Dashboard
     master_df.to_json(os.path.join(output_dir, "dashboard_data.json"), orient="records", indent=4)
 
     print(f"✅ Pipeline Complete. Files saved in /{output_dir}")
 
+
 if __name__ == "__main__":
-    run_data_pipeline(num_patients=1000)
+    run_data_pipeline(amount=1000)

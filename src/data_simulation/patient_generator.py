@@ -1,71 +1,86 @@
-# patient_generator.py
 # -----------------------------------
-# This module generates simulated patient profile data
-# including demographics and clinical risk factors.
+# This section is used to generate patient details.
 # -----------------------------------
 
-import random  # Used for random selection of attributes
+import random
+from model.Patient import Patient
+from model.PatientDetails import PatientDetails
+from model.SensoryDetails import SensoryDetails
 
-# Predefined age categories commonly used in stroke studies
-AGE_GROUPS = [
-    "40-49",
-    "50-59",
-    "60-69",
-    "70-79"
-]
-
-# Biological sex categories
+AGE_GROUPS = ["40-49", "50-59", "60-69", "70-79"]
 SEXES = ["Male", "Female"]
 
 
-def generate_patient(patient_id: int) -> dict:
-    """
-    Generates a single simulated patient profile.
+# This creates a single patient details object
+def generate_single_patient_details(patient_id: int) -> PatientDetails:
+    return PatientDetails(patient_id,
+                          random.choice(AGE_GROUPS),
+                          random.choice(SEXES),
+                          random.choice([0, 1]),
+                          random.choice([0, 1]),
+                          random.choice([0, 1]))
 
-    Parameters:
-        patient_id (int): Unique identifier for the patient
+# This creates a single sensory details object
+def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilateral_probability: float = 0.1) -> SensoryDetails:
+    base_sensation = random.uniform(7.0, 10.0) # 7-10 means healthy
+    roll = random.random()
+    # --- CASE 1: BILATERAL DEFICIT (Both sides low) ---
+    if roll < bilateral_probability:
+        # Significant drop on both sides
+        left_sensory = random.uniform(1.0, 4.5)
+        right_sensory = random.uniform(1.0, 4.5)
+        affected_side = "Both"
+        severity = "Severe (Bilateral)"
+        label = 2
 
-    Returns:
-        dict: Patient demographic and clinical risk data
-    """
+    # --- CASE 2: UNILATERAL DEFICIT (One side low) ---
+    elif roll < (bilateral_probability + asymmetric_probability):
+        deficit = random.uniform(1.5, 5.0)
 
-    return {
-        # Unique patient identifier
-        "patient_id": patient_id,
+        if deficit < 2.5: severity = "Mild"
+        elif deficit < 4.0: severity = "Moderate"
+        else: severity = "Severe"
 
-        # Age group instead of exact age to reduce bias
-        "age_group": random.choice(AGE_GROUPS),
+        if random.choice(["left", "right"]) == "left":
+            left_sensory = max(0.0, base_sensation - deficit)
+            right_sensory = base_sensation
+            affected_side = "Left"
+        else:
+            right_sensory = max(0.0, base_sensation - deficit)
+            left_sensory = base_sensation
+            affected_side = "Right"
+        label = 1
 
-        # Sex of the patient
-        "sex": random.choice(SEXES),
+    # --- CASE 3: NORMAL (Both sides high) ---
+    else:
+        left_sensory = base_sensation + random.uniform(-0.3, 0.3)
+        right_sensory = base_sensation + random.uniform(-0.3, 0.3)
+        affected_side = "None"
+        severity = "None"
+        label = 0
 
-        # Clinical risk factors represented as binary values
-        # 1 = present, 0 = absent
-        "hypertension": random.choice([0, 1]),
-        "diabetes": random.choice([0, 1]),
-        "smoking_history": random.choice([0, 1])
-    }
+    # 2. Calculate Asymmetry Index (AI)
+    diff = abs(left_sensory - right_sensory)
+    avg = (left_sensory + right_sensory) / 2
+    asymmetry_index = diff / avg if avg > 0 else 0.0
+
+    return SensoryDetails(left_sensory, right_sensory, asymmetry_index, affected_side, severity, label)
 
 
-def generate_patients(num_patients: int = 1000) -> list:
-    """
-    Generates a list of simulated patient profiles.
 
-    Parameters:
-        num_patients (int): Number of patients to simulate (max 1000)
 
-    Returns:
-        list: List of patient profile dictionaries
-    """
+# This creates X number of patients with their details and sensory details.
+def generate_batch_patients_data(quantity: int = 1000) -> list:
+    if quantity > 1000: raise ValueError("Maximum allowed simulated patients is 1000")
 
-    # Enforce upper limit to maintain dataset realism
-    if num_patients > 1000:
-        raise ValueError("Maximum allowed simulated patients is 1000")
+    patient_list = []
+    for i in range(1, quantity + 1):
+        patient = generate_single_patient_details(i)
+        sensory = generate_single_sensory_details()
 
-    patients = []
+        patient_list.append(Patient.create(patient, sensory))
 
-    # Generate each patient profile
-    for i in range(1, num_patients + 1):
-        patients.append(generate_patient(i))
+    return patient_list
 
-    return patients
+
+
