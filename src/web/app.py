@@ -35,7 +35,7 @@ def api_get_sample_patients():
     return jsonify({
         "success": True,
         "count": len(patients),
-        "patients": patients  # Limit response size
+        "patients": [p.__dict__ for p in patients]
     })
 
 
@@ -83,7 +83,7 @@ def api_add_sample_patients(amount):
             "message": f"Generated {amount} new patients",
             "data_source": data_source,
             "new_patient_count": len(new_patients),
-            "new_patients": new_patients
+            "new_patients": [p.__dict__ for p in new_patients]
         })
 
 
