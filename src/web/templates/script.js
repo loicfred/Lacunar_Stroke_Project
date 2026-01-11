@@ -10,7 +10,7 @@ document.getElementById("strokeForm").addEventListener("submit", function (e) {
         "Form submitted successfully (prediction logic not yet connected)";
 });
 
-// Logout button
+// Logout Button
 document.getElementById("logoutBtn").addEventListener("click", function () {
     alert("You have been logged out.");
 });
