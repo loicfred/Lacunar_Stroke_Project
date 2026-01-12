@@ -102,7 +102,6 @@ def predict_with_model(patient_data):
 
         label, risk_level, emoji, category = risk_labels.get(prediction, ("Unknown", "unknown", "⚪", "unknown"))
 
-        # ========== LOGIC FIX: PREVENT 6.99 CRITICAL ERROR ==========
         # If the model flags Bilateral Risk (4), but scores are actually decent (> 6.0)
         if prediction == 4:
             if avg_score >= 6.5:
