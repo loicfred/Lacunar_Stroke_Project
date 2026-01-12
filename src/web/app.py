@@ -2,7 +2,7 @@
 Main Flask App for Lacunar Stroke Detection
 Green: This is the foundation. Other members add to marked sections.
 """
-import logging;
+import logging
 import time
 
 from model.PatientDetails import PatientDetails
@@ -33,11 +33,11 @@ print("=" * 50)
 print("🤖 LOADING STROKE PREDICTION MODEL")
 print("=" * 50)
 
-# Get project root (go up from 'web/' to project root)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Go up TWO levels from src/web/app.py to reach project root
-MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models', 'stroke_model.pkl')
+# Get the directory where app.py is (src/web/)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Go up one level to 'src/', then into 'model/'
+MODEL_PATH = os.path.join(os.path.dirname(CURRENT_DIR), 'model', 'stroke_model.pkl')
 model = None
 try:
     if not os.path.exists(MODEL_PATH):
@@ -96,36 +96,41 @@ def predict_with_model(patient_data):
         # Make prediction
         prediction = model.predict(input_data)[0]
 
+
+
         # Get probabilities if available
-        confidence = 0.85  # Default confidence
+        model_confidence = 0.85  # Default confidence
         if hasattr(model, 'predict_proba'):
             probabilities = model.predict_proba(input_data)[0]
-            confidence = max(probabilities)
+            model_confidence = max(probabilities)
 
         # Map prediction to readable labels
         # Updated mapping for 5-Tier Impact Levels
         risk_labels = {
-            0: ("Strong Response", "low", "🟢"),
-            1: ("Slightly Reduced", "medium", "🟡"),
-            2: ("Moderately Reduced", "medium", "🟠"),
-            3: ("Significantly Reduced", "high", "🔴"),
-            4: ("Weak Global Response", "critical", "🟣")
+            0: ("Strong Response", "low", "🟢", "Normal (Healthy)"),
+            1: ("Slightly Reduced", "medium", "🟡", "Unilateral Risk (Asymmetric)"),
+            2: ("Moderately Reduced", "medium", "🟠", "Unilateral Risk (Asymmetric)"),
+            3: ("Significantly Reduced", "high", "🔴", "Unilateral Risk (Asymmetric)"),
+            4: ("Weak Global Response", "critical", "🟣", "Bilateral Risk (Both Sides Low)")
         }
 
-        label, risk_level, emoji = risk_labels.get(prediction, ("Unknown", "unknown", "⚪"))
+        label, risk_level, emoji, category = risk_labels.get(prediction, ("Unknown", "unknown", "⚪", "unknown"))
 
-        # Determine affected side for unilateral cases
+        # Determine side for Unilateral tiers (1, 2, 3)
         affected_side = "None"
-        if prediction == 1:  # Unilateral Risk
+        if prediction in [1, 2, 3]:
             affected_side = "Left" if left_score < right_score else "Right"
+        elif prediction == 4:
+            affected_side = "Both (Systemic)"
 
         return {
             "prediction_code": int(prediction),
             "prediction_label": label,
             "risk_level": risk_level,
-            "emoji": emoji,
-            "confidence": round(confidence, 3),
+            "state_emoji": emoji,
+            "model_confidence": round(model_confidence, 3),
             "affected_side": affected_side,
+            "clinical_category": category,
             "asymmetry_index": round(asymmetry_index, 3),
             "model_used": "trained_ml_model",
             "model_type": type(model).__name__
@@ -221,18 +226,12 @@ def api_clear_sample_patients():
 def add_sample_patients(amount: int = 1):
     global sample_patient_list
     new_patients_list = []
-    for patient in patient_gen.generate_batch_patient_details(amount):
-        left_score = round(random.uniform(3.0, 10.0), 2)
-        right_score = round(random.uniform(3.0, 10.0), 2)
-        asymmetry = abs(left_score - right_score) > 2.0
-        if asymmetry:
-            affected_side = "Left" if left_score < right_score else "Right"
-        else:
-            affected_side = "None"
-        asymmetry_label = 1 if asymmetry else 0
-        sensory_details = SensoryDetails(left_score, right_score, affected_side, asymmetry_label)
+    for i in range(amount):
+        patient_detail = patient_gen.generate_single_patient_details(random.randint(100, 999))
+        # This uses your CASE 1/2/3 logic correctly:
+        sensory_detail = patient_gen.generate_single_sensory_details()
 
-        new_patient = Patient.create(patient, sensory_details)
+        new_patient = Patient.create(patient_detail, sensory_detail)
         new_patients_list.append(new_patient)
         sample_patient_list.append(new_patient)
     return new_patients_list
