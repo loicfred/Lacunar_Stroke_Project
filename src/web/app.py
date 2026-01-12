@@ -69,43 +69,29 @@ sample_patient_list = []
 # ========== MODEL PREDICTION FUNCTION ==========
 def predict_with_model(patient_data):
     """
-    Use the trained ML model to predict stroke risk
-    Returns: prediction result dictionary
+    Use the trained ML model
     """
     if model is None:
-        return None  # Indicate model not available
+        return None
 
     try:
-        # Extract features from patient data
+        # 1. Extract features
         left_score = patient_data.get("left_sensory_score", 5.0)
         right_score = patient_data.get("right_sensory_score", 5.0)
+        avg_score = (left_score + right_score) / 2
 
-        # Calculate asymmetry index
-        avg = (left_score + right_score) / 2
-        if avg > 0:
-            asymmetry_index = abs(left_score - right_score) / avg
+        # 2. Calculate asymmetry
+        if avg_score > 0:
+            asymmetry_index = abs(left_score - right_score) / avg_score
         else:
             asymmetry_index = 0
 
-        # Prepare data for model
+        # 3. Model Prediction
         input_data = pd.DataFrame([[left_score, right_score, asymmetry_index]],
-                                  columns=['left_sensory_score',
-                                           'right_sensory_score',
-                                           'asymmetry_index'])
+                                  columns=['left_sensory_score', 'right_sensory_score', 'asymmetry_index'])
+        prediction = int(model.predict(input_data)[0])
 
-        # Make prediction
-        prediction = model.predict(input_data)[0]
-
-
-
-        # Get probabilities if available
-        model_confidence = 0.85  # Default confidence
-        if hasattr(model, 'predict_proba'):
-            probabilities = model.predict_proba(input_data)[0]
-            model_confidence = max(probabilities)
-
-        # Map prediction to readable labels
-        # Updated mapping for 5-Tier Impact Levels
+        # 4. Initial Mapping
         risk_labels = {
             0: ("Strong Response", "low", "🟢", "Normal (Healthy)"),
             1: ("Slightly Reduced", "medium", "🟡", "Unilateral Risk (Asymmetric)"),
@@ -116,15 +102,30 @@ def predict_with_model(patient_data):
 
         label, risk_level, emoji, category = risk_labels.get(prediction, ("Unknown", "unknown", "⚪", "unknown"))
 
-        # Determine side for Unilateral tiers (1, 2, 3)
+        # ========== LOGIC FIX: PREVENT 6.99 CRITICAL ERROR ==========
+        # If the model flags Bilateral Risk (4), but scores are actually decent (> 6.0)
+        if prediction == 4:
+            if avg_score >= 6.5:
+                # Downgrade to "Normal/Borderline"
+                label, risk_level, emoji, category = ("Normal", "low", "🟢", "Bilateral (High Scores)")
+            elif avg_score >= 5.0:
+                # Downgrade to "Medium"
+                label, risk_level, emoji, category = ("Mild Bilateral Reduction", "medium", "🟠", "Bilateral Risk")
+        # ============================================================
+
+        # Determine side
         affected_side = "None"
         if prediction in [1, 2, 3]:
             affected_side = "Left" if left_score < right_score else "Right"
         elif prediction == 4:
             affected_side = "Both (Systemic)"
 
+        model_confidence = 0.85
+        if hasattr(model, 'predict_proba'):
+            model_confidence = max(model.predict_proba(input_data)[0])
+
         return {
-            "prediction_code": int(prediction),
+            "prediction_code": prediction,
             "prediction_label": label,
             "risk_level": risk_level,
             "state_emoji": emoji,
@@ -139,7 +140,6 @@ def predict_with_model(patient_data):
     except Exception as e:
         print(f"Model prediction error: {e}")
         return None
-
 
 # ========== FALLBACK PREDICTION (Existing Logic) ==========
 def predict_stroke_threshold(patient_data):
