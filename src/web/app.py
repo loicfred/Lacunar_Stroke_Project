@@ -29,7 +29,8 @@ print("=" * 50)
 
 # Get project root (go up from 'web/' to project root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "stroke_model.pkl")
+# Go up TWO levels from src/web/app.py to reach project root
+MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models', 'stroke_model.pkl')
 
 model = None
 try:
@@ -398,6 +399,9 @@ def not_found(_):
 def server_error(_):
     return jsonify({"success": False, "error": "Internal server error"}), 500
 
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({"error": "Bad request", "message": "Invalid input"}), 400
 
 # ========== MAIN EXECUTION ==========
 
