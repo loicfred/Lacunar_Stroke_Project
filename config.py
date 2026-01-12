@@ -81,8 +81,8 @@ MODEL_CONFIG: Dict[str, Any] = {
         'normal_variation': (-0.3, 0.3)
     },
     
-    # Severity thresholds
-    'severity_levels': {
+    # response_strength thresholds
+    'response_strength_levels': {
         'mild_threshold': 2.5,
         'moderate_threshold': 4.0,
         'severe_label': "Severe"
