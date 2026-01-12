@@ -29,7 +29,7 @@ body {
     z-index: 9999;
     height: 100vh; display: flex; justify-content: center; align-items: center;
 }
-@media (max-width: 400px) {
+@media (max-width: 1000px) {
     #loading {
         background-image: url("../static/img/lacunar_mobile.png");
         background-size: cover;
@@ -77,7 +77,7 @@ body {
     padding: 25px;
     border-radius: 10px;
     box-shadow: 0 0 12px rgba(0,0,0,0.1);
-    width: 380px;
+    width: 600px;
     max-height: calc(90vh - 60px);
     overflow-y: auto;
     margin: 90px auto 30px;

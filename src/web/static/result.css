@@ -9,9 +9,10 @@
     --radius-lg: 16px;
     --radius-md: 12px;
 
-    --low: #3ccf8e;
-    --moderate: #f4b942;
-    --high: #ff4d4f;
+    --low: #167823;
+    --medium: #bf611f;
+    --high: #ec4446;
+    --critical: #8a090a;
     --blue: #14005c;
 }
 
@@ -32,7 +33,7 @@ body {
 
 /* Phone frame */
 .phone {
-    width: 360px;
+    width: 420px;
     max-width: 92vw;
     background: var(--bg);
     border-radius: 32px;
@@ -123,27 +124,40 @@ body {
     color: var(--muted);
 }
 
+
+
 /* Risk states */
 .low-risk {
     color: var(--low);
     border: 1px solid var(--low);
-    background: rgba(60, 207, 142, 0.1);
+    background: white;
 }
 .low-risk .dot { background: var(--low); }
 
-.moderate-risk {
-    color: var(--moderate);
-    border: 1px solid var(--moderate);
-    background: rgba(244, 185, 66, 0.15);
+.medium-risk {
+    color: var(--medium);
+    border: 1px solid var(--medium);
+    background: white;
 }
-.moderate-risk .dot { background: var(--moderate); }
+.medium-risk .dot { background: var(--medium); }
 
 .high-risk {
     color: var(--high);
     border: 1px solid var(--high);
-    background: rgba(255, 77, 79, 0.15);
+    background: white;
 }
 .high-risk .dot { background: var(--high); }
+
+.critical-risk {
+    color: var(--critical);
+    border: 1px solid var(--critical);
+    background: white;
+}
+.critical-risk .dot { background: var(--critical); }
+
+
+
+
 
 /* Section blocks */
 .section {

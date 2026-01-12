@@ -22,11 +22,18 @@
         <section class="risk-card blue-card">
             <div class="risk-row">
                 <div class="risk-left">
-                    <div class="risk-badge moderate-risk">
+                    <div class="risk-badge {{ data.prediction.risk_level }}-risk">
                         <span class="dot"></span>
-                        Moderate risk
+                        {{ data.prediction.prediction_label }}
                     </div>
-                    <div class="risk-percent moderate-risk">25%</div>
+                    <div class="risk-badge {{ data.prediction.risk_level }}-risk">
+                        <span class="dot"></span>
+                        {{ data.prediction.clinical_category }}
+                    </div>
+                    <div class="risk-badge {{ data.prediction.risk_level }}-risk">
+                        <span class="dot"></span>
+                        Risk Level: {{ data.prediction.risk_level }}
+                    </div>
                     <div class="risk-meta">Last updated: Jan 12, 2026</div>
                 </div>
             </div>
