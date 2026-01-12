@@ -10,7 +10,6 @@ __pycache__/
 .env
 *.log
 *.csv
-*.pkl
 *.h5
 
 # Ignore IntelliJ files
