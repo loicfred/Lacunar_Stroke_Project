@@ -19,8 +19,7 @@ def run_data_pipeline(amount=5000, output_dir="master_data"):
     # Save as CSV for the Random Forest
     master_df.to_csv(os.path.join(output_dir, "stroke_training_data.csv"), index=False)
 
-    # Save as JSON for the Flask Dashboard
-    # master_df.to_json(os.path.join(output_dir, "dashboard_data.json"), orient="records", indent=4)
+
 
     print(f"✅ Pipeline Complete. Files saved in /{output_dir}")
 
