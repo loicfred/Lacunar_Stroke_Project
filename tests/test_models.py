@@ -8,7 +8,7 @@ def run_comprehensive_test():
     # 1. GENERATE TRAINING DATA
     # We generate 500 patients to ensure the model sees enough Bilateral (10%) cases
     print("📊 Generating 500 training samples...")
-    raw_patients = patient_gen.generate_batch_patients_data(500)
+    raw_patients = patient_gen.generate_batch_patients_data(5000)
 
     df = pd.DataFrame([p.__dict__ for p in raw_patients])
 
@@ -16,7 +16,7 @@ def run_comprehensive_test():
     X = df[['left_sensory_score', 'right_sensory_score', 'asymmetry_index']]
     y = df['impact_tier']
 
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42)
     model.fit(X, y)
     print("✅ Model trained on 5-Tier Impact logic.")
 
@@ -30,9 +30,9 @@ def run_comprehensive_test():
     TIER_TO_CATEGORY = {
         0: "🟢 Normal (Healthy)",
         1: "🟡 Unilateral Risk (Asymmetric)",
-        2: "🟡 Unilateral Risk (Asymmetric)",
-        3: "🟡 Unilateral Risk (Asymmetric)",
-        4: "🔴 Bilateral Risk (Both Sides Low)"
+        2: "🟠 Unilateral Risk (Asymmetric)",
+        3: "🔴 Unilateral Risk (Asymmetric)",
+        4: "🟣 Bilateral Risk (Both Sides Low)"
     }
 
     IMPACT_LEVELS = {
@@ -60,7 +60,9 @@ def run_comprehensive_test():
         ("Moderate Bilateral", [4.2, 4.4, 0.04]),
 
         # TIER 0: Healthy but Low-End (Balanced but near the 7.0 cutoff)
-        ("Low-End Healthy", [7.1, 7.2, 0.01])
+        ("Low-End Healthy", [7.1, 7.2, 0.01]),
+
+        ("my test case", [6.91, 6.98, 0.01])
     ]
 
     print("\n" + "="*65)

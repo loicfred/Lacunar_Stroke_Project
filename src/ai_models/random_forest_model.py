@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "data_simulation", "master_data", "stroke_training_data.csv")
 MODEL_SAVE_PATH = os.path.join(BASE_DIR, "model", "stroke_model.pkl")
 
-# IMPACT LEVEL MAPPING (For the report)
+# --- Clinical Mappings ---
 IMPACT_LEVELS = {
     0: "Strong Response",
     1: "Slightly Reduced",
@@ -21,10 +21,16 @@ IMPACT_LEVELS = {
     4: "Weak Global Response"
 }
 
+TIER_TO_CATEGORY = {
+    0: "🟢 Normal (Healthy)",
+    1: "🟡 Unilateral Risk (Asymmetric)",
+    2: "🟠 Unilateral Risk (Asymmetric)",
+    3: "🔴 Unilateral Risk (Asymmetric)",
+    4: "🟣 Bilateral Risk (Both Sides Low)"
+}
+
+
 def train_production_model():
-    """
-    Trains a Random Forest to predict specific Impact Tiers.
-    """
     if not os.path.exists(DATA_PATH):
         print(f"❌ Error: {DATA_PATH} not found.")
         return
@@ -32,44 +38,33 @@ def train_production_model():
     df = pd.read_csv(DATA_PATH)
     print(f"📊 Loaded {len(df)} records for training.")
 
-    # 1. Select Features (X)
     features = ['left_sensory_score', 'right_sensory_score', 'asymmetry_index']
     X = df[features]
-
-    # 2. Select Target (y)
-    # Ensure your CSV has this 'impact_tier' column (0-4)
-    # If your column is named differently, change it here:
     y = df['impact_tier']
 
-    # 3. Split into Training and Testing sets
-    # Stratify ensures each Tier (0-4) is represented in both sets
+    # Split using stratification to ensure Tier 4 is balanced
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # 4. Initialize and Train
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Train with hyperparameters from test_models
+    model = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42)
     model.fit(X_train, y_train)
 
-    # 5. Evaluate
+    # Evaluation
     y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
+    print(f"✅ Training Complete. Test Accuracy: {accuracy_score(y_test, y_pred)*100:.2f}%")
 
-    print("\n" + "="*45)
-    print(f"🧠 AI IMPACT ANALYSIS REPORT")
-    print("="*45)
-    print(f"✅ Overall Accuracy: {accuracy * 100:.2f}%")
-    print("\nTier Breakdown:")
-
-    # Map the numbers 0-4 to your new Impact Level names
-    target_names = [IMPACT_LEVELS[i] for i in sorted(y.unique())]
+    # Detailed report
+    unique_tiers = sorted(y.unique())
+    target_names = [IMPACT_LEVELS[t] for t in unique_tiers]
+    print("\nDetailed Classification Metrics:")
     print(classification_report(y_test, y_pred, target_names=target_names))
 
-    # 6. Save the trained 'Brain'
-    joblib.dump(model, MODEL_SAVE_PATH)
-    print(f"💾 Model with Tiers saved to: {MODEL_SAVE_PATH}")
 
-    return model
+    # Save the model
+    joblib.dump(model, MODEL_SAVE_PATH)
+    print(f"💾 Model saved successfully to: {MODEL_SAVE_PATH}")
 
 if __name__ == "__main__":
     train_production_model()

@@ -103,7 +103,7 @@ PATIENT_CONFIG: Dict[str, Any] = {
     'generation': {
         'default_sample_size': 5,
         'max_api_generation': 100,
-        'max_simulation': 1000,
+        'max_simulation': 5000,
         'api_response_limit': 20,
         'dashboard_display': 5
     }
