@@ -2,7 +2,12 @@
 Main Flask App for Lacunar Stroke Detection
 Green: This is the foundation. Other members add to marked sections.
 """
-import logging; logging.basicConfig(level=logging.INFO)
+import logging;
+import time
+
+from model.PatientDetails import PatientDetails
+
+logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, render_template, jsonify, request
 import data_simulation.patient_generator as patient_gen
@@ -72,10 +77,8 @@ def predict_with_model(patient_data):
 
     try:
         # Extract features from patient data
-        left_score = patient_data.get("left_sensory_score",
-                                      patient_data.get("left_score", 5.0))
-        right_score = patient_data.get("right_sensory_score",
-                                       patient_data.get("right_score", 5.0))
+        left_score = patient_data.get("left_sensory_score", 5.0)
+        right_score = patient_data.get("right_sensory_score", 5.0)
 
         # Calculate asymmetry index
         avg = (left_score + right_score) / 2
@@ -135,10 +138,8 @@ def predict_stroke_threshold(patient_data):
     """
     Fallback prediction using threshold logic
     """
-    left_score = patient_data.get("left_sensory_score",
-                                  patient_data.get("left_score", 5.0))
-    right_score = patient_data.get("right_sensory_score",
-                                   patient_data.get("right_score", 5.0))
+    left_score = patient_data.get("left_sensory_score", 5.0)
+    right_score = patient_data.get("right_sensory_score", 5.0)
 
     asymmetry_detected = abs(left_score - right_score) > 2.0
 
@@ -255,15 +256,26 @@ def api_add_sample_patients(amount):
 @app.route('/api/predict', methods=['POST']) # Send patient's data to return a prediction.
 def api_predict_stroke():
     try:
-        print(request.values)
-        patient_data = request.json # Get request body as JSON
-        if not patient_data:
+        if not request.values: # Get request body as JSON
             return jsonify({
                 "success": False,
                 "error": "No patient data provided"
             }), 400
 
-        prediction = predict_stroke(patient_data)  # Get prediction from model/threshold
+        new_patient = PatientDetails(int(time.time()), request.values["age"], request.values["sex"],
+                                     request.values["hypertension"], request.values["diabetes"], request.values["smoking"])
+
+        left_score = float(request.values["left_sensory"])
+        right_score = float(request.values["right_sensory"])
+        asymmetry = abs(left_score - right_score) > 2.0
+        if asymmetry: affected_side = "Left" if left_score < right_score else "Right"
+        else: affected_side = "None"
+        asymmetry_label = 1 if asymmetry else 0
+        new_sensory = SensoryDetails(left_score, right_score, affected_side, asymmetry_label)
+
+        patient = Patient.create(new_patient, new_sensory)
+
+        prediction = predict_stroke(patient.__dict__)  # Get prediction from model/threshold
 
         # Add model status info
         prediction["model_loaded"] = model is not None
@@ -271,7 +283,7 @@ def api_predict_stroke():
         return jsonify({
             "success": True,
             "prediction": prediction,
-            "received_data": patient_data,
+            "received_data": patient.__dict__,
             "model_status": "loaded" if model is not None else "not_loaded"
         })
     except Exception as e:
@@ -363,11 +375,12 @@ def home():
             pred = predict_stroke(p)
         patient_predictions.append(pred)
 
-    return render_template('index.html',
-                           stats=stats,
-                           patients=patients,
-                           patient_predictions=patient_predictions,
-                           model_loaded=model is not None)
+    return render_template('index.html', stats=stats, patients=patients,
+                           patient_predictions=patient_predictions, model_loaded=model is not None)
+
+@app.route('/dataset') # Page to upload a dataset to view
+def upload_dataset():
+    return render_template('upload_dataset.html',model_loaded=model is not None)
 
 
 # ========== MISC CONTROLLER ==========

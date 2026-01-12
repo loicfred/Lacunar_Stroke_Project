@@ -7,7 +7,7 @@ from model.Patient import Patient
 from model.PatientDetails import PatientDetails
 from model.SensoryDetails import SensoryDetails
 
-AGE_GROUPS = ["40-49", "50-59", "60-69", "70-79"]
+AGE_GROUPS = ["30-39", "40-49", "50-59", "60-69", "70-79", "80+"]
 SEXES = ["Male", "Female"]
 
 

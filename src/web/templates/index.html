@@ -37,20 +37,20 @@
 
             <label>Age Range</label>
             <select name="age" required>
-                <option value="">Select</option>
-                <option>39 and under</option>
-                <option>40–49</option>
-                <option>50–59</option>
-                <option>60–69</option>
-                <option>70–79</option>
-                <option>80+</option>
+                <option value="" disabled selected>Select</option>
+                <option value="30-39">30-39</option>
+                <option value="40–49">40–49</option>
+                <option value="50–59">50–59</option>
+                <option value="60–69">60–69</option>
+                <option value="70–79">70–79</option>
+                <option value="80+">80+</option>
             </select>
 
             <label>Sex</label>
             <select name="sex" required>
-                <option value="">Select</option>
-                <option>Male</option>
-                <option>Female</option>
+                <option value="" disabled selected>Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
             </select>
 
             <label>Phone Number</label>
@@ -87,15 +87,15 @@
         <div class="form-section">
             <h3>Sensory Information</h3>
 
-            <label>Sensory Feeling (Right Side)</label>
-            <input type="range" min="0" max="10"  step="0.01" value="5.00"
-                   oninput="rightValue.textContent=this.value">
-            <span id="rightValue">5</span>
-
             <label>Sensory Feeling (Left Side)</label>
-            <input type="range" min="0" max="10"  step="0.01" value="5.00"
+            <input type="range" name="left_asymmetry" min="0" max="10"  step="0.01" value="5.00"
                    oninput="leftValue.textContent=this.value">
             <span id="leftValue">5</span>
+
+            <label>Sensory Feeling (Right Side)</label>
+            <input type="range" name="right_asymmetry" min="0" max="10"  step="0.01" value="5.00"
+                   oninput="rightValue.textContent=this.value">
+            <span id="rightValue">5</span>
         </div>
 
         <button type="submit">Predict</button>
