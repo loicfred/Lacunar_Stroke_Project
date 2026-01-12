@@ -293,6 +293,46 @@ def api_predict_stroke():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+def get_dashboard_stats():
+    patients = get_sample_patients()
+    total = len(patients)
+
+    # Calculate predictions for stats
+    ml_predictions = 0
+    risk_distribution = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+
+    for p in patients:
+        if hasattr(p, '__dict__'):
+            patient_dict = p.__dict__
+        else:
+            patient_dict = p
+
+        prediction = predict_stroke(patient_dict)
+        risk_distribution[prediction["risk_level"]] += 1
+
+        if prediction.get("model_used") == "trained_ml_model":
+            ml_predictions += 1
+
+    asymmetric = sum(1 for p in patients if getattr(p, 'asymmetry_label', 0) == 1)
+
+    return {
+        "total_patients": total,
+        "asymmetric_cases": asymmetric,
+        "asymmetric_percentage": (asymmetric/total*100) if total > 0 else 0,
+        "avg_left_score": sum(p.left_sensory_score for p in patients)/total if total > 0 else 0,
+        "avg_right_score": sum(p.right_sensory_score for p in patients)/total if total > 0 else 0,
+        "ml_predictions": ml_predictions,
+        "threshold_predictions": total - ml_predictions,
+        "risk_distribution": risk_distribution,
+        "model_loaded": model is not None
+    }
+@app.route('/api/dashboard', methods=['GET']) # To get the average statistics of the sample data.
+def api_get_dashboard_stats(): # The statistics of the dashboard. for example: percentages
+    return jsonify({
+        "success": True,
+        "dashboard": get_dashboard_stats(),
+        "model_status": "loaded" if model is not None else "not_loaded"
+    })
 
 
 # ========== MODEL TEST ENDPOINT ==========
