@@ -282,15 +282,16 @@ def api_predict_stroke():
         # Add model status info
         prediction["model_loaded"] = model is not None
 
-        return jsonify({
+        data = jsonify({
             "success": True,
             "prediction": prediction,
             "received_data": patient.__dict__,
             "model_status": "loaded" if model is not None else "not_loaded"
-        })
+        }).json
+        print(data)
+        return render_template('result.html', data=data,model_loaded=model is not None)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 def get_dashboard_stats():
     patients = get_sample_patients()
@@ -298,7 +299,7 @@ def get_dashboard_stats():
 
     # Calculate predictions for stats
     ml_predictions = 0
-    risk_distribution = {"low": 0, "medium": 0, "high": 0}
+    risk_distribution = {"low": 0, "medium": 0, "high": 0, "critical": 0}
 
     for p in patients:
         if hasattr(p, '__dict__'):
@@ -365,24 +366,15 @@ def api_model_test():
 
 @app.route('/') # Redirect url to the home page
 def home():
-    stats = get_dashboard_stats()
-    patients = get_sample_patients()[:5]  # First 5 only for display
-
-    # Get model predictions for display
-    patient_predictions = []
-    for p in patients:
-        if hasattr(p, '__dict__'):
-            pred = predict_stroke(p.__dict__)
-        else:
-            pred = predict_stroke(p)
-        patient_predictions.append(pred)
-
-    return render_template('index.html', stats=stats, patients=patients,
-                           patient_predictions=patient_predictions, model_loaded=model is not None)
+    return render_template('index.html', model_loaded=model is not None)
 
 @app.route('/dataset') # Page to upload a dataset to view
 def upload_dataset():
     return render_template('upload_dataset.html',model_loaded=model is not None)
+
+@app.route('/result')
+def result():
+    return render_template('result.html',model_loaded=model is not None)
 
 
 # ========== MISC CONTROLLER ==========
