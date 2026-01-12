@@ -265,8 +265,8 @@ def api_predict_stroke():
         new_patient = PatientDetails(int(time.time()), request.values["age"], request.values["sex"],
                                      request.values["hypertension"], request.values["diabetes"], request.values["smoking"])
 
-        left_score = float(request.values["left_sensory"])
-        right_score = float(request.values["right_sensory"])
+        left_score = float(request.values["left_asymmetry"])
+        right_score = float(request.values["right_asymmetry"])
         asymmetry = abs(left_score - right_score) > 2.0
         if asymmetry: affected_side = "Left" if left_score < right_score else "Right"
         else: affected_side = "None"
