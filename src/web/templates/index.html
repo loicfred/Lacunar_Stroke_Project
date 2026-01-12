@@ -5,10 +5,17 @@
     <title>Lacunar Stroke Detection Assignment</title>
     <link rel="stylesheet" href="../static/style.css">
 </head>
-<body>
+<body onload="setTimeout(() => {
+        document.getElementById('header').style.display='flex';
+        document.getElementById('main').style.display='block';
+        document.getElementById('loading').style.display='none';
+    }, 3000);">
+<div id="loading">
+    <div class="spinner"></div>
+</div>
 
 <!-- Main Bar -->
-<nav class="navbar">
+<nav id="header" style="display: none;" class="navbar">
     <div class="nav-title"> Lacunar Stroke Detection System</div>
     <div class="nav-links">
         <a href="#">Home</a>
@@ -17,7 +24,7 @@
 </nav>
 
 <!-- Form Container -->
-<div class="form-container">
+<div id="main" style="display: none;" class="form-container">
     <h2>Lacunar Stroke Detection</h2>
 
     <form id="strokeForm" action="/api/predict" method="post">

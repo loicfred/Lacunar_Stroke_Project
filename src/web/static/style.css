@@ -4,6 +4,41 @@ body {
     margin: 0;
 }
 
+
+
+
+
+.spinner {
+    border: 5px solid rgba(255, 255, 255, 0.1);
+    border-top: 5px solid #fff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+#loading {
+    background-color: #030617;
+    background-image: url("../static/img/lacunar_pc.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    z-index: 9999;
+    height: 100vh; display: flex; justify-content: center; align-items: center;
+}
+@media (max-width: 400px) {
+    #loading {
+        background-image: url("../static/img/lacunar_mobile.png");
+        background-size: cover;
+    }
+}
+
+
+
+
 /* Nav Bar */
 .navbar {
     position: fixed;
