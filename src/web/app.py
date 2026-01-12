@@ -2,6 +2,7 @@
 Main Flask App for Lacunar Stroke Detection
 Green: This is the foundation. Other members add to marked sections.
 """
+import logging; logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, render_template, jsonify, request
 import data_simulation.patient_generator as patient_gen
