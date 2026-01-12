@@ -191,7 +191,6 @@ def get_sample_patients():
     if not sample_patient_list:
         sample_patient_list = add_sample_patients(5)
     return sample_patient_list
-
 @app.route('/api/patients', methods=['GET'])  # To get all sample patients.
 def api_get_sample_patients():
     patients = get_sample_patients()
@@ -206,7 +205,6 @@ def api_get_sample_patients():
 def clear_sample_patients():
     global sample_patient_list
     sample_patient_list = []
-
 @app.route('/api/clear', methods=["GET"]) # To clear all sample patient data.
 def api_clear_sample_patients():
     clear_sample_patients()
@@ -234,7 +232,6 @@ def add_sample_patients(amount: int = 1):
         new_patients_list.append(new_patient)
         sample_patient_list.append(new_patient)
     return new_patients_list
-
 @app.route('/api/generate-new/<int:amount>', methods=["GET"]) # To generate new fresh patient data.
 def api_add_sample_patients(amount):
     if amount > 100:
@@ -258,6 +255,7 @@ def api_add_sample_patients(amount):
 @app.route('/api/predict', methods=['POST']) # Send patient's data to return a prediction.
 def api_predict_stroke():
     try:
+        print(request.values)
         patient_data = request.json # Get request body as JSON
         if not patient_data:
             return jsonify({
@@ -313,7 +311,6 @@ def get_dashboard_stats():
         "risk_distribution": risk_distribution,
         "model_loaded": model is not None
     }
-
 @app.route('/api/dashboard', methods=['GET']) # To get the average statistics of the sample data.
 def api_get_dashboard_stats(): # The statistics of the dashboard. for example: percentages
     return jsonify({

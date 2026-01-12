@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSV Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .upload-section {
+            margin: 20px 0;
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            display: none;
+        }
+
+        table.show {
+            display: table;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        button.show {
+            display: inline-block;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+
+<h1>CSV Upload and Submit</h1>
+
+<div class="upload-section">
+    <h2>Upload CSV File</h2>
+    <input type="file" id="csvFile" accept=".csv"/>
+</div>
+
+<div id="messageContainer"></div>
+
+<table id="dataTable">
+    <thead id="tableHeader"></thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<button id="submitBtn" onclick="submitData()">Submit to Backend</button>
+
+<script>
+    let csvData = [];
+
+    document.getElementById('csvFile').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const text = e.target.result;
+            parseCSV(text);
+        };
+        reader.readAsText(file);
+    });
+
+    function parseCSV(text) {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) {
+            showMessage('CSV file is empty', 'error');
+            return;
+        }
+
+        csvData = [];
+        const headers = lines[0].split(',').map(h => h.trim());
+
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            const row = {};
+            headers.forEach((header, index) => {
+                row[header] = values[index] || '';
+            });
+            csvData.push(row);
+        }
+
+        displayTable(headers, csvData);
+        showMessage('CSV loaded successfully! ' + csvData.length + ' rows found.', 'success');
+    }
+
+    function displayTable(headers, data) {
+        const table = document.getElementById('dataTable');
+        const thead = document.getElementById('tableHeader');
+        const tbody = document.getElementById('tableBody');
+
+        // Clear existing content
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        // Create header row
+        const headerRow = document.createElement('tr');
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.textContent = header;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+
+        // Create data rows
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            headers.forEach(header => {
+                const td = document.createElement('td');
+                td.textContent = row[header] || '';
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+
+        // Show table and submit button
+        table.classList.add('show');
+        document.getElementById('submitBtn').classList.add('show');
+    }
+
+    function submitData() {
+        if (csvData.length === 0) {
+            showMessage('No data to submit', 'error');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        console.log(csvData)
+        fetch('/api/upload-csv', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({data: csvData})
+        })
+            .then(response => response.json())
+            .then(data => {
+                showMessage('Data submitted successfully!', 'success');
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                showMessage('Error submitting data: ' + error.message, 'error');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit to Backend';
+            });
+    }
+
+    function showMessage(message, type) {
+        const container = document.getElementById('messageContainer');
+        container.innerHTML = `<div class="message ${type}">${message}</div>`;
+        setTimeout(() => {
+            container.innerHTML = '';
+        }, 5000);
+    }
+</script>
+
+</body>
+</html>
