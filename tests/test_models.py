@@ -3,7 +3,7 @@ from sklearn.ensemble import RandomForestClassifier
 import src.data_simulation.patient_generator as patient_gen
 
 def run_comprehensive_test():
-    print("🧪 Starting Multi-Class Model Test (Normal vs. Unilateral vs. Bilateral)...")
+    print("🧪 Starting Dual-Output Model Test (Categories + Impact Tiers)...")
 
     # 1. GENERATE TRAINING DATA
     # We generate 500 patients to ensure the model sees enough Bilateral (10%) cases
@@ -14,51 +14,78 @@ def run_comprehensive_test():
 
     # 2. TRAIN THE MODEL
     X = df[['left_sensory_score', 'right_sensory_score', 'asymmetry_index']]
-    y = df['asymmetry_label'] # Now contains 0, 1, and 2
+    y = df['impact_tier']
 
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X, y)
-    print("✅ Model trained on 3-class logic.")
+    print("✅ Model trained on 5-Tier Impact logic.")
 
     # 3. THE TRIPLE TEST (PREDICTION)
     # Define feature names to avoid the UserWarning
     cols = ['left_sensory_score', 'right_sensory_score', 'asymmetry_index']
 
-    # Patient A: Healthy (High & Balanced)
-    p_normal = pd.DataFrame([[9.2, 9.4, 0.02]], columns=cols)
 
-    # Patient B: Unilateral/Stroke Risk (Lopsided)
-    p_unilateral = pd.DataFrame([[9.0, 4.1, 0.74]], columns=cols)
-
-    # Patient C: Bilateral/Systemic Risk (Both Low)
-    p_bilateral = pd.DataFrame([[3.2, 3.0, 0.06]], columns=cols)
-
-    # Run Predictions
-    pred_a = model.predict(p_normal)[0]
-    pred_b = model.predict(p_unilateral)[0]
-    pred_c = model.predict(p_bilateral)[0]
 
     # 4. REPORT RESULTS
-    results_map = {
+    TIER_TO_CATEGORY = {
         0: "🟢 Normal (Healthy)",
         1: "🟡 Unilateral Risk (Asymmetric)",
-        2: "🔴 Bilateral Risk (Both Sides Low)"
+        2: "🟡 Unilateral Risk (Asymmetric)",
+        3: "🟡 Unilateral Risk (Asymmetric)",
+        4: "🔴 Bilateral Risk (Both Sides Low)"
     }
 
-    print("\n" + "="*40)
-    print("      AI PREDICTION RESULTS")
-    print("="*40)
-    print(f"Patient A (9.2, 9.4): {results_map[pred_a]}")
-    print(f"Patient B (9.0, 4.1): {results_map[pred_b]}")
-    print(f"Patient C (3.2, 3.0): {results_map[pred_c]}")
-    print("="*40)
+    IMPACT_LEVELS = {
+        0: "Strong Response",
+        1: "Slightly Reduced",
+        2: "Moderately Reduced",
+        3: "Significantly Reduced",
+        4: "Weak Global Response"
+    }
+
+    # Updated Test Suite for Impact Tiers (0-4)
+    test_cases = [
+        # TIER 1: Borderline Subtle (Just enough asymmetry to trigger)
+        ("Borderline Subtle", [8.5, 7.8, 0.08]),
+
+        # TIER 2: Moderate Unilateral (Clear gap, but not a total loss)
+        ("Moderate Gap", [9.0, 5.5, 0.48]),
+
+        # TIER 3: Pronounced Unilateral (Near-complete loss on one side)
+        ("Pronounced Gap", [8.8, 1.2, 1.52]),
+
+        # TIER 4: Moderate Bilateral (Symmetrical but both weak - not yet "Weak Global")
+        # This checks if the AI keeps it as Tier 4 because the scores are low,
+        # even if they aren't at the minimum (1.0).
+        ("Moderate Bilateral", [4.2, 4.4, 0.04]),
+
+        # TIER 0: Healthy but Low-End (Balanced but near the 7.0 cutoff)
+        ("Low-End Healthy", [7.1, 7.2, 0.01])
+    ]
+
+    print("\n" + "="*65)
+    print(f"{'TEST CASE':<20} | {'IMPAIRMENT CATEGORY':<25} | {'IMPACT LEVEL'}")
+    print("-" * 65)
+
+    for name, values in test_cases:
+        test_df = pd.DataFrame([values], columns=cols)
+
+        # The model predicts the Tier (0-4)
+        tier_pred = model.predict(test_df)[0]
+
+        category = TIER_TO_CATEGORY[tier_pred]
+        impact = IMPACT_LEVELS[tier_pred]
+
+        print(f"{name:<20} | {category:<25} | {impact}")
+
+    print("="*65)
 
     # 5. ANALYZE FEATURE IMPORTANCE
     importances = model.feature_importances_
-    print("\n💡 Feature Importance Breakdown:")
-    print(f"- Left Score:      {importances[0]:.2%}")
-    print(f"- Right Score:     {importances[1]:.2%}")
-    print(f"- Asymmetry Index: {importances[2]:.2%}")
+    print("\n💡 Feature Importance Breakdown (Tiers are sensitive to both Index and Scores):")
+    for feature, importance in zip(cols, importances):
+        print(f"- {feature.replace('_', ' ').title():<18}: {importance:.2%}")
 
 if __name__ == "__main__":
     run_comprehensive_test()
+

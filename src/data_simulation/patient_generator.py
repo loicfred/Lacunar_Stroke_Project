@@ -37,16 +37,23 @@ def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilater
         left_sensory = random.uniform(1.0, 4.5)
         right_sensory = random.uniform(1.0, 4.5)
         affected_side = "Both"
-        severity = "Severe (Bilateral)"
+        response_strength = "Weak Global Response"
         label = 2
+        tier = 4
 
     # --- CASE 2: UNILATERAL DEFICIT (One side low) ---
     elif roll < (bilateral_probability + asymmetric_probability):
         deficit = random.uniform(1.5, 5.0)
 
-        if deficit < 2.5: severity = "Mild"
-        elif deficit < 4.0: severity = "Moderate"
-        else: severity = "Severe"
+        if deficit < 2.5:
+            response_strength = "Slightly Reduced"
+            tier = 1
+        elif deficit < 4.0:
+            response_strength = "Moderately Reduced"
+            tier = 2
+        else:
+            response_strength = "Significantly Reduced"
+            tier = 3
 
         if random.choice(["left", "right"]) == "left":
             left_sensory = max(0.0, base_sensation - deficit)
@@ -63,11 +70,13 @@ def generate_single_sensory_details(asymmetric_probability: float = 0.4, bilater
         left_sensory = base_sensation + random.uniform(-0.3, 0.3)
         right_sensory = base_sensation + random.uniform(-0.3, 0.3)
         affected_side = "None"
-        severity = "None"
+        response_strength = "Strong Response"
         label = 0
+        tier = 0
 
     details = SensoryDetails(left_sensory, right_sensory, affected_side, label)
-    details.severity = severity
+    details.response_strength = response_strength
+    details.impact_tier = tier
     return details
 
 

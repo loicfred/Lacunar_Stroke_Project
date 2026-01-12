@@ -35,18 +35,18 @@ def run_test():
     merged_df.to_csv(csv_path, index=False)
 
     # B. JSON for Flask App (Dashboard/Frontend)
-    json_path = os.path.join(data_dir, "patient_dashboard_data.json")
+    #json_path = os.path.join(data_dir, "patient_dashboard_data.json")
     # 'records' orientation creates a list of dicts: [{p1}, {p2}...]
-    merged_df.to_json(json_path, orient="records", indent=4)
+    #merged_df.to_json(json_path, orient="records", indent=4)
 
     # --- 6. DISPLAY RESULTS ---
     print("\n" + "="*50)
     print("✅ SUCCESS: DATA MERGED AND EXPORTED")
     print("="*50)
     print(f"📍 CSV Path: {csv_path}")
-    print(f"📍 JSON Path: {json_path}")
-    print("\nPreview of first 2 records:")
-    print(merged_df.head(4).to_string())
+    #print(f"📍 JSON Path: {json_path}")
+    print("\nPreview of first 5 records:")
+    print(merged_df.head(5).to_string())
 
 if __name__ == "__main__":
     run_test()

@@ -103,10 +103,13 @@ def predict_with_model(patient_data):
             confidence = max(probabilities)
 
         # Map prediction to readable labels
+        # Updated mapping for 5-Tier Impact Levels
         risk_labels = {
-            0: ("Normal", "low", "🟢"),
-            1: ("Unilateral Risk", "medium", "🟡"),
-            2: ("Bilateral Risk", "high", "🔴")
+            0: ("Strong Response", "low", "🟢"),
+            1: ("Slightly Reduced", "medium", "🟡"),
+            2: ("Moderately Reduced", "medium", "🟠"),
+            3: ("Significantly Reduced", "high", "🔴"),
+            4: ("Weak Global Response", "critical", "🟣")
         }
 
         label, risk_level, emoji = risk_labels.get(prediction, ("Unknown", "unknown", "⚪"))
