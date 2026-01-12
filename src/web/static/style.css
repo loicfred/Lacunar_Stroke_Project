@@ -10,7 +10,7 @@ body {
     top: 0;
     width: 100%;
     height: 60px;
-    background-color: #47f0ea;
+    background-color: #021571;
     color: white;
     display: flex;
     justify-content: space-between;
@@ -100,7 +100,7 @@ span {
 button {
     width: 100%;
     padding: 10px;
-    background-color:  #47f0ea;
+    background-color:  #021571;
     color: white;
     border: none;
     border-radius: 5px;
@@ -109,7 +109,7 @@ button {
 }
 
 button:hover {
-    background-color: #005fa3;
+    background-color: #ff4800;
 }
 
 #result {
