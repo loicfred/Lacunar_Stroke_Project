@@ -13,5 +13,5 @@ __pycache__/
 *.h5
 
 # Ignore IntelliJ files
-.idea
+.idea/
 out
