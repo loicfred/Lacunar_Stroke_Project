@@ -1,3 +1,5 @@
+from datetime import datetime
+
 class SensoryDetails:
     def __init__(self, left_sensory_score, right_sensory_score, affected_side, asymmetry_label, impact_tier=0):
         self.left_sensory_score = left_sensory_score
@@ -6,6 +8,7 @@ class SensoryDetails:
         self.asymmetry_label = asymmetry_label
         self.impact_tier = impact_tier
 
+        self.timestamp = datetime.now()
 
         self.asymmetry_index = self.calculate_asymmetry_index()
         self.response_strength = None
@@ -22,3 +25,8 @@ class SensoryDetails:
         asym_diff = self.calculate_asymmetry_diff()
         self.asymmetry_index = asym_diff / avg if avg > 0 else 0.0
         return self.asymmetry_index
+
+    def fromDict(self, **kwargs):
+        self.timestamp = kwargs.get("timestamp")
+        self.left_sensory_score = kwargs.get("left_sensory_score")
+        self.right_sensory_score = kwargs.get("right_sensory_score")

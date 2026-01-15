@@ -6,3 +6,5 @@ class PatientDetails:
         self.hypertension = hypertension
         self.diabetes = diabetes
         self.smoking_history = smoking_history
+        self.first_name = None
+        self.last_name = None

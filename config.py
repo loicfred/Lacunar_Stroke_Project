@@ -136,7 +136,7 @@ def check_module_status() -> Dict[str, Dict[str, bool]]:
             'sensory_simulator': (DATA_SIM_DIR / "sensory_simulator.py").exists(),
             'random_forest_model': (AI_MODELS_DIR / "random_forest_model.py").exists(),
             'rnn_model': (AI_MODELS_DIR / "rnn_model.py").exists(),
-            'patient_model': (MODEL_DIR / "Patient.py").exists()
+            'patient_model': (MODEL_DIR / "Patient_Info.py").exists()
         },
         'RED': {
             'api_endpoints': True,

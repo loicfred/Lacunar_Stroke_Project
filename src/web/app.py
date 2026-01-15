@@ -5,7 +5,7 @@ Green: This is the foundation. Other members add to marked sections.
 import logging
 import time
 
-from model.PatientDetails import PatientDetails
+from model.sample.PatientDetails import PatientDetails
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,8 +17,8 @@ import os
 import joblib
 import pandas as pd
 
-from model.Patient import Patient
-from model.SensoryDetails import SensoryDetails
+from model.sample.Patient import Patient
+from model.sample.SensoryDetails import SensoryDetails
 
 current_dir = os.path.dirname(os.path.abspath(__file__))  # src/web/
 parent_dir = os.path.dirname(current_dir)  # src/
