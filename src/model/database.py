@@ -30,7 +30,7 @@ ENTITY_REGISTRY = {
 def getByID(table_name, entity_id):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE id = ?", entity_id)
+    cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE id = ?", (entity_id,))
     row = cursor.fetchone()
     if not row: return None
     entity_class = ENTITY_REGISTRY[table_name.lower()]
@@ -47,5 +47,5 @@ def getAll(table_name):
     return [entity_class(**row) for row in rows]
 
 
-print(getByID('user', 1))
-print(getByID('detailed_report', 1))
+print(getByID("user", 1).email)
+print(getByID("detailed_report", 1).first_name)
