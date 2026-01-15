@@ -26,7 +26,3 @@ class SensoryDetails:
         self.asymmetry_index = asym_diff / avg if avg > 0 else 0.0
         return self.asymmetry_index
 
-    def fromDict(self, **kwargs):
-        self.timestamp = kwargs.get("timestamp")
-        self.left_sensory_score = kwargs.get("left_sensory_score")
-        self.right_sensory_score = kwargs.get("right_sensory_score")
