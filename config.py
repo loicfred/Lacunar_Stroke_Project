@@ -93,7 +93,7 @@ MODEL_CONFIG: Dict[str, Any] = {
 PATIENT_CONFIG: Dict[str, Any] = {
     # Demographics
     'demographics': {
-        'age_groups': ["40-49", "50-59", "60-69", "70-79"],
+        'age_groups': ["30-39", "40-49", "50-59", "60-69", "70-79", "80+"],
         'sex_options': ["Male", "Female"],
         'conditions': ["hypertension", "diabetes", "smoking_history"],
         'condition_values': [0, 1]

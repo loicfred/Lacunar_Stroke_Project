@@ -1,6 +1,6 @@
 class Patient_Info:
     def __init__(self, **kwargs):
-        self.patient_id = kwargs.get("patient_id")
+        self.id = kwargs.get("patient_id")
         self.age_group = kwargs.get("age_group")
         self.sex = kwargs.get("sex")
         self.hypertension = kwargs.get("hypertension")

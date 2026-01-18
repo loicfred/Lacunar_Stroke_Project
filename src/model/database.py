@@ -1,23 +1,23 @@
 import mariadb
+import random
+import os
+import pandas as pd
 
+from datetime import datetime, timedelta
 from model.db.User import User
 from model.db.Detailed_Report import Detailed_Report
 from model.db.Notification import Notification
 from model.db.Patient_Info import Patient_Info
 from model.db.Reading import Reading
 
-_conn = None
 def get_connection():
-    global _conn
-    if _conn is None:
-        _conn = mariadb.connect(
-            user="Lacunar",
-            password="LacunarStroke1234",
-            host="54.37.40.206",
-            port=3306,
-            database="lacunar_stroke"
-        )
-    return _conn
+    return mariadb.connect(
+        user="Lacunar",
+        password="LacunarStroke1234",
+        host="54.37.40.206",
+        port=3306,
+        database="lacunar_stroke"
+    )
 
 ENTITY_REGISTRY = {
     "user": User,
@@ -34,6 +34,7 @@ def getByID(table_name, entity_id):
     row = cursor.fetchone()
     if not row: return None
     entity_class = ENTITY_REGISTRY[table_name.lower()]
+    conn.close()
     return entity_class(**row)
 
 def getAll(table_name):
@@ -41,11 +42,96 @@ def getAll(table_name):
     cursor = conn.cursor(dictionary=True)
     cursor.execute(f"SELECT * FROM {table_name.lower()}")
     rows = cursor.fetchall()
-    if not rows:
-        return []
+    if not rows: return []
     entity_class = ENTITY_REGISTRY[table_name.lower()]
+    conn.close()
     return [entity_class(**row) for row in rows]
 
+def insert(table_name, entity):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        attributes = {k: v for k, v in entity.__dict__.items() if v is not None}
+        columns = ", ".join(attributes.keys())
+        placeholders = ", ".join(["?" for _ in attributes])
+        query = f"INSERT INTO {table_name.lower()} ({columns}) VALUES ({placeholders})"
+        cursor.execute(query, tuple(attributes.values()))
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
 
-print(getByID("user", 1).email)
-print(getByID("detailed_report", 1).first_name)
+def update(table_name, entity_id, fields):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        set_clause = ", ".join([f"{key} = ?" for key in fields.keys()])
+        query = f"UPDATE {table_name.lower()} SET {set_clause} WHERE id = ?"
+        cursor.execute(query, tuple(list(fields.values()) + [entity_id]))
+        conn.commit()
+        conn.close()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+def delete(table_name, entity_id):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        query = f"DELETE FROM {table_name.lower()} WHERE id = ?"
+        cursor.execute(query, (entity_id,))
+        conn.commit()
+        conn.close()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def generate_sample_data():
+    for i in range(100):
+        user = User(
+            username=f"user_{i}_{random.randint(1000, 9999)}",
+            email=f"user{i}@example.com",
+            password=f"pass{random.randint(10000, 99999)}",
+            role=random.choice(["USER"])
+        )
+        user_id = insert("user", user)
+        # Create random Patient_Info with user_id
+        patient_info = Patient_Info(
+            id=user_id,
+            age_group=random.choice(["30-39", "40-49", "50-59", "60-69", "70-79", "80+"]),
+            sex=random.choice(["Male", "Female"]),
+            hypertension=random.choice([0, 1]),
+            diabetes=random.choice([0, 1]),
+            smoking_history=random.choice([0, 1]),
+        )
+        patient_info.id = user_id
+        insert("patient_info", patient_info)
+
+        # Initial scores
+        left_score = random.uniform(7, 10)
+        right_score = random.uniform(7, 10)
+
+        for x in range(10):
+            reading = Reading(
+                patient_id=user_id,
+                timestamp=datetime.now() + timedelta(hours=x),
+                left_sensory_score=round(left_score, 2),
+                right_sensory_score=round(right_score, 2)
+            )
+
+            left_score = left_score + random.uniform(0.05, -0.3)
+            right_score = right_score + random.uniform(0.05, -0.3)
+            reading.left_sensory_score = left_score
+            reading.right_sensory_score = right_score
+            
+            insert("reading", reading)
+
+    print("Successfully generated 100 sample records")
+
+def toCSV(itemlist, filename):
+    master_df = pd.DataFrame([p.__dict__ for p in itemlist])
+    master_df.to_csv(os.path.join("output", filename + ".csv"), index=False)
+
+
+generate_sample_data()
