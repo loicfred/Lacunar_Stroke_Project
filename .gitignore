@@ -3,6 +3,8 @@ venv/
 .venv/
 env/
 
+lacunar_stroke_project.iml
+
 # Ignore Python cache files
 __pycache__/
 *.pyc
