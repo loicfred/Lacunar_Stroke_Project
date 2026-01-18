@@ -93,7 +93,7 @@ MODEL_CONFIG: Dict[str, Any] = {
 PATIENT_CONFIG: Dict[str, Any] = {
     # Demographics
     'demographics': {
-        'age_groups': ["40-49", "50-59", "60-69", "70-79"],
+        'age_groups': ["30-39", "40-49", "50-59", "60-69", "70-79", "80+"],
         'sex_options': ["Male", "Female"],
         'conditions': ["hypertension", "diabetes", "smoking_history"],
         'condition_values': [0, 1]
@@ -136,7 +136,7 @@ def check_module_status() -> Dict[str, Dict[str, bool]]:
             'sensory_simulator': (DATA_SIM_DIR / "sensory_simulator.py").exists(),
             'random_forest_model': (AI_MODELS_DIR / "random_forest_model.py").exists(),
             'rnn_model': (AI_MODELS_DIR / "rnn_model.py").exists(),
-            'patient_model': (MODEL_DIR / "Patient.py").exists()
+            'patient_model': (MODEL_DIR / "Patient_Info.py").exists()
         },
         'RED': {
             'api_endpoints': True,
