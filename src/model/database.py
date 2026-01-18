@@ -115,13 +115,13 @@ def generate_sample_data():
         for x in range(10):
             reading = Reading(
                 patient_id=user_id,
-                timestamp=datetime.now() + timedelta(hours=x),
+                timestamp=datetime.now() + timedelta(hours=(x*3)),
                 left_sensory_score=round(left_score, 2),
                 right_sensory_score=round(right_score, 2)
             )
 
-            left_score = left_score + random.uniform(0.05, -0.3)
-            right_score = right_score + random.uniform(0.05, -0.3)
+            left_score = left_score + random.uniform(0.05, -0.5)
+            right_score = right_score + random.uniform(0.05, -0.5)
             reading.left_sensory_score = left_score
             reading.right_sensory_score = right_score
             
