@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - Lacunar Stroke Predictor</title>
+    <link rel="stylesheet" href="comstyle.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<!-- Header -->
+<header class="header">
+    <div class="logo">
+        <i class="fas fa-walking card-icon"></i>
+        <h1>Lacunar Stroke Predictor <span>PATIENT</span></h1>
+    </div>
+    <div class="user-info">
+        <div class="notification-badge" id="notificationBtn">
+            <i class="fas fa-bell fa-lg"></i>
+            <span class="notification-count" id="notificationCount">2</span>
+        </div>
+        <div class="user-profile">
+            <i class="fas fa-user-circle fa-2x"></i>
+            <div>
+                <strong id="patientName">John Doe</strong>
+                <div class="status-indicator status-normal" id="currentStatusBadge">Normal</div>
+            </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+</header>
+
+<!-- Main Dashboard -->
+<div class="container">
+    <div class="dashboard-container">
+        <!-- Current Status Card -->
+        <div class="card" id="current-status">
+            <div class="card-header">
+                <h2 class="card-title">Current Status</h2>
+                <i class="fas fa-heartbeat card-icon"></i>
+            </div>
+            <div class="text-center">
+                <div class="asymmetry-percentage percentage-normal" id="currentAsymmetry">
+                    12%
+                </div>
+                <p>Asymmetry Percentage</p>
+                <div class="status-indicator status-normal mt-10" id="statusIndicator">
+                    Normal (< 15%)
+                </div>
+            </div>
+            <div class="mt-20">
+                <div class="info-group">
+                    <label>Today's Average:</label>
+                    <span id="todayAverage">14.2%</span>
+                </div>
+                <div class="info-group mt-10">
+                    <label>Last Reading:</label>
+                    <span id="lastReadingTime">10:30 AM</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="card" id="chart-container">
+            <div class="card-header">
+                <h2 class="card-title">Asymmetry Trend (Last 7 Days)</h2>
+                <i class="fas fa-chart-line card-icon"></i>
+            </div>
+            <div class="chart-container">
+                <canvas id="asymmetryChart"></canvas>
+            </div>
+            <div class="text-center mt-10">
+                <small>Red line indicates 20% critical threshold</small>
+            </div>
+        </div>
+
+        <!-- Recent Readings Table -->
+        <div class="card" id="recent-readings">
+            <div class="card-header">
+                <h2 class="card-title">Recent Readings</h2>
+                <i class="fas fa-table card-icon"></i>
+            </div>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Left Gait</th>
+                    <th>Right Gait</th>
+                    <th>Asymmetry %</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody id="readingsTable">
+                <!-- Data populated by JavaScript -->
+                </tbody>
+            </table>
+            <button class="btn btn-view mt-10" onclick="loadMoreReadings()">
+                <i class="fas fa-sync-alt"></i> Load More
+            </button>
+        </div>
+
+        <!-- Alert History -->
+        <div class="card" id="alert-history">
+            <div class="card-header">
+                <h2 class="card-title">Alert History</h2>
+                <i class="fas fa-exclamation-triangle card-icon"></i>
+            </div>
+            <ul class="alert-list" id="alertList">
+                <!-- Alerts populated by JavaScript -->
+            </ul>
+            <div class="text-center mt-10">
+                <button class="btn btn-view" onclick="showAllAlerts()">
+                    View All Alerts
+                </button>
+            </div>
+        </div>
+
+        <!-- Daily Progress -->
+        <div class="card" id="daily-progress">
+            <div class="card-header">
+                <h2 class="card-title">Daily Progress</h2>
+                <i class="fas fa-trophy card-icon"></i>
+            </div>
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <i class="fas fa-check-circle fa-2x" style="color: var(--success-green);"></i>
+                    <div class="progress-value" id="completedReadings">6</div>
+                    <div>Completed Today</div>
+                </div>
+                <div class="progress-item">
+                    <i class="fas fa-percentage fa-2x" style="color: var(--primary-blue);"></i>
+                    <div class="progress-value" id="complianceRate">75%</div>
+                    <div>Compliance Rate</div>
+                </div>
+                <div class="progress-item">
+                    <i class="fas fa-star fa-2x" style="color: var(--warning-yellow);"></i>
+                    <div class="progress-value" id="bestScore">8%</div>
+                    <div>Best Score Today</div>
+                </div>
+                <div class="progress-item">
+                    <i class="fas fa-user-md fa-2x" style="color: var(--primary-blue);"></i>
+                    <div>Dr. Smith</div>
+                    <div class="mt-10" id="lastNote">"Good progress this week"</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Modal -->
+<div class="modal" id="notificationModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Notifications</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="p-20" id="notificationContent">
+            <!-- Notifications loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="charts.js"></script>
+<script>
+    // ===== PATIENT DASHBOARD FUNCTIONS =====
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPatientData();
+        initializePatientCharts();
+
+        // Setup event listeners
+        document.getElementById('notificationBtn').onclick = showNotifications;
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('notificationModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Simulate live data updates (for demo)
+        setInterval(simulateLiveData, 15000);
+    });
+
+    // Load patient data from database
+    async function loadPatientData() {
+        try {
+            // In a real app, this would fetch from RED's database via API
+            // For demo, we use sample data
+            const sampleData = {
+                name: "John Doe",
+                currentAsymmetry: 12,
+                todayAverage: 14.2,
+                lastReading: "10:30 AM",
+                status: "normal",
+                readings: [
+                    { time: "10:30 AM", left: 85, right: 65, asymmetry: 23, status: "critical" },
+                    { time: "09:45 AM", left: 78, right: 75, asymmetry: 4, status: "normal" },
+                    { time: "08:15 AM", left: 80, right: 64, asymmetry: 20, status: "borderline" },
+                    { time: "Yesterday 3:30 PM", left: 82, right: 78, asymmetry: 5, status: "normal" },
+                    { time: "Yesterday 1:15 PM", left: 75, right: 60, asymmetry: 20, status: "borderline" }
+                ],
+                alerts: [
+                    { time: "10:30 AM", message: "Critical: Asymmetry reached 23%", critical: true },
+                    { time: "Yesterday 1:15 PM", message: "Warning: Asymmetry at 20%", critical: false },
+                    { time: "Jun 12, 2:30 PM", message: "Critical: Asymmetry reached 28%", critical: true }
+                ],
+                progress: {
+                    completed: 6,
+                    compliance: 75,
+                    bestScore: 8,
+                    lastNote: "Good progress this week"
+                }
+            };
+
+            updatePatientDashboard(sampleData);
+        } catch (error) {
+            console.error("Error loading patient data:", error);
+            showError("Failed to load patient data. Please try again.");
+        }
+    }
+
+    // Update dashboard with patient data
+    function updatePatientDashboard(data) {
+        // Update patient info
+        document.getElementById('patientName').textContent = data.name;
+        document.getElementById('currentAsymmetry').textContent = data.currentAsymmetry + '%';
+        document.getElementById('todayAverage').textContent = data.todayAverage + '%';
+        document.getElementById('lastReadingTime').textContent = data.lastReading;
+
+        // Update status
+        updateStatusIndicator(data.currentAsymmetry);
+
+        // Populate readings table
+        populateReadingsTable(data.readings);
+
+        // Populate alerts
+        populateAlerts(data.alerts);
+
+        // Update notification count
+        const criticalAlerts = data.alerts.filter(a => a.critical &&
+            a.time.includes('Today') || a.time.includes('10:30')).length;
+        document.getElementById('notificationCount').textContent = criticalAlerts;
+
+        // Update progress
+        document.getElementById('completedReadings').textContent = data.progress.completed;
+        document.getElementById('complianceRate').textContent = data.progress.compliance + '%';
+        document.getElementById('bestScore').textContent = data.progress.bestScore + '%';
+        document.getElementById('lastNote').textContent = '"' + data.progress.lastNote + '"';
+    }
+
+    // Update status indicator based on asymmetry percentage
+    function updateStatusIndicator(asymmetry) {
+        const statusBadge = document.getElementById('statusIndicator');
+        const percentageElement = document.getElementById('currentAsymmetry');
+
+        let status, colorClass, text;
+
+        if (asymmetry > 20) {
+            status = 'critical';
+            colorClass = 'percentage-critical';
+            text = 'Critical (> 20%)';
+        } else if (asymmetry > 15) {
+            status = 'borderline';
+            colorClass = 'percentage-borderline';
+            text = 'Borderline (15-20%)';
+        } else {
+            status = 'normal';
+            colorClass = 'percentage-normal';
+            text = 'Normal (< 15%)';
+        }
+
+        // Update badge
+        statusBadge.className = `status-indicator status-${status}`;
+        statusBadge.textContent = text;
+
+        // Update percentage color
+        percentageElement.className = `asymmetry-percentage ${colorClass}`;
+
+        // Update current status in header
+        document.getElementById('currentStatusBadge').className = `status-indicator status-${status}`;
+        document.getElementById('currentStatusBadge').textContent = text.split(' ')[0];
+    }
+
+    // Populate readings table
+    function populateReadingsTable(readings) {
+        const tableBody = document.getElementById('readingsTable');
+        tableBody.innerHTML = '';
+
+        readings.forEach(reading => {
+            const row = document.createElement('tr');
+
+            let statusClass, statusText;
+            if (reading.asymmetry > 20) {
+                statusClass = 'status-critical';
+                statusText = '⚠️ Critical';
+            } else if (reading.asymmetry >= 15) {
+                statusClass = 'status-borderline';
+                statusText = '⚠️ Borderline';
+            } else {
+                statusClass = 'status-normal';
+                statusText = '✓ Normal';
+            }
+
+            row.innerHTML = `
+                    <td>${reading.time}</td>
+                    <td>${reading.left}</td>
+                    <td>${reading.right}</td>
+                    <td><strong>${reading.asymmetry}%</strong></td>
+                    <td><span class="table-badge ${statusClass}">${statusText}</span></td>
+                `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Populate alerts list
+    function populateAlerts(alerts) {
+        const alertList = document.getElementById('alertList');
+        alertList.innerHTML = '';
+
+        alerts.forEach(alert => {
+            const alertItem = document.createElement('li');
+            alertItem.className = `alert-item ${alert.critical ? 'critical' : ''}`;
+            alertItem.innerHTML = `
+                    <div>
+                        <strong>${alert.message}</strong>
+                        <div class="alert-time">${alert.time}</div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                `;
+
+            alertItem.onclick = () => showAlertDetails(alert);
+            alertList.appendChild(alertItem);
+        });
+    }
+
+    // Show notification modal
+    function showNotifications() {
+        const modal = document.getElementById('notificationModal');
+        modal.style.display = 'flex';
+
+        // Load notification content
+        const content = document.getElementById('notificationContent');
+        content.innerHTML = `
+                <h3>Recent Alerts</h3>
+                <div class="alert-item critical">
+                    <strong>Critical Alert</strong>
+                    <p>Asymmetry reached 23% at 10:30 AM</p>
+                    <div class="alert-time">Just now</div>
+                </div>
+                <div class="alert-item">
+                    <strong>Warning</strong>
+                    <p>Missed reading scheduled for 9:00 AM</p>
+                    <div class="alert-time">2 hours ago</div>
+                </div>
+                <div class="alert-item">
+                    <strong>Info</strong>
+                    <p>Dr. Smith reviewed your latest readings</p>
+                    <div class="alert-time">Yesterday</div>
+                </div>
+                <div class="text-center mt-20">
+                    <button class="btn" onclick="clearAllNotifications()" style="background: #6C757D; color: white;">
+                        Clear All Notifications
+                    </button>
+                </div>
+            `;
+    }
+
+    // Close modal
+    function closeModal() {
+        document.getElementById('notificationModal').style.display = 'none';
+    }
+
+    // Show alert details
+    function showAlertDetails(alert) {
+        alert(`Alert Details:\n\n${alert.message}\n\nTime: ${alert.time}\n\nThis alert was ${alert.critical ? 'CRITICAL' : 'a warning'}.`);
+    }
+
+    // Show all alerts
+    function showAllAlerts() {
+        showNotifications();
+    }
+
+    // Clear notifications
+    function clearAllNotifications() {
+        document.getElementById('notificationCount').textContent = '0';
+        document.getElementById('alertList').innerHTML = '<li>No alerts to show</li>';
+        closeModal();
+    }
+
+    // Load more readings
+    function loadMoreReadings() {
+        alert("Loading more readings from database...");
+        // In real app, this would fetch additional data from RED's database
+    }
+
+    // Simulate live data updates
+    function simulateLiveData() {
+        // Simulate new reading every 15 seconds
+        const randomAsymmetry = Math.floor(Math.random() * 30);
+        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        // Update current asymmetry
+        document.getElementById('currentAsymmetry').textContent = randomAsymmetry + '%';
+        updateStatusIndicator(randomAsymmetry);
+
+        // Update chart if it exists
+        if (window.updatePatientChart) {
+            updatePatientChart(randomAsymmetry);
+        }
+
+        // Add alert if asymmetry > 20%
+        if (randomAsymmetry > 20) {
+            const alertList = document.getElementById('alertList');
+            const alertItem = document.createElement('li');
+            alertItem.className = 'alert-item critical';
+            alertItem.innerHTML = `
+                    <div>
+                        <strong>Live Alert: Asymmetry reached ${randomAsymmetry}%</strong>
+                        <div class="alert-time">${time}</div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                `;
+
+            // Add to top
+            if (alertList.firstChild) {
+                alertList.insertBefore(alertItem, alertList.firstChild);
+            }
+
+            // Update notification count
+            const count = parseInt(document.getElementById('notificationCount').textContent) + 1;
+            document.getElementById('notificationCount').textContent = count;
+
+            // Show notification
+            showLiveNotification(`Critical: Asymmetry reached ${randomAsymmetry}%`);
+        }
+    }
+
+    // Show live notification
+    function showLiveNotification(message) {
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: var(--danger-red);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                z-index: 9999;
+                box-shadow: var(--shadow-lg);
+                animation: slideIn 0.3s ease;
+            `;
+
+        toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-exclamation-circle fa-lg"></i>
+                    <div>${message}</div>
+                </div>
+            `;
+
+        document.body.appendChild(toast);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+
+    // Error handler
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--danger-red);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                z-index: 9999;
+            `;
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+
+        setTimeout(() => errorDiv.remove(), 5000);
+    }
+
+    // Logout function
+    function logout() {
+        if (confirm("Are you sure you want to logout?")) {
+            // In real app, this would clear session and redirect
+            alert("Redirecting to login page...");
+            // window.location.href = 'login.html';
+        }
+    }
+</script>
+</body>
+</html>

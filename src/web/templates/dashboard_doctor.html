@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard - Lacunar Stroke Predictor</title>
+    <link rel="stylesheet" href="comstyle.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<!-- Header -->
+<header class="header">
+    <div class="logo">
+        <i class="fas fa-user-md card-icon"></i>
+        <h1>Lacunar Stroke Predictor <span>DOCTOR</span></h1>
+    </div>
+    <div class="user-info">
+        <div class="notification-badge" id="notificationBtn">
+            <i class="fas fa-bell fa-lg"></i>
+            <span class="notification-count" id="notificationCount">3</span>
+        </div>
+        <div class="user-profile">
+            <i class="fas fa-user-md fa-2x"></i>
+            <div>
+                <strong>Dr. Sarah Miller</strong>
+                <div>Neurology Department</div>
+            </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+</header>
+
+<!-- Main Dashboard -->
+<div class="container">
+    <div class="dashboard-container">
+        <!-- Quick Stats -->
+        <div class="card" id="quick-stats">
+            <div class="card-header">
+                <h2 class="card-title">Quick Stats</h2>
+                <i class="fas fa-chart-pie card-icon"></i>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-users fa-2x" style="color: var(--primary-blue);"></i>
+                    <div class="stat-value" id="totalPatients">24</div>
+                    <div>Total Patients</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-exclamation-circle fa-2x" style="color: var(--danger-red);"></i>
+                    <div class="stat-value stat-critical" id="criticalPatients">3</div>
+                    <div>Critical Cases</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-exclamation-triangle fa-2x" style="color: var(--warning-yellow);"></i>
+                    <div class="stat-value stat-warning" id="borderlinePatients">5</div>
+                    <div>Borderline Cases</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-bell fa-2x" style="color: var(--alert-orange);"></i>
+                    <div class="stat-value stat-warning" id="newAlerts">7</div>
+                    <div>New Alerts</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient List -->
+        <div class="card" id="patient-list">
+            <div class="card-header">
+                <h2 class="card-title">Patient List</h2>
+                <i class="fas fa-list card-icon"></i>
+            </div>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Age</th>
+                    <th>Condition</th>
+                    <th>Last Reading</th>
+                    <th>Asymmetry</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody id="patientsTable">
+                <!-- Patient data loaded by JavaScript -->
+                </tbody>
+            </table>
+            <div class="mt-10">
+                <button class="btn btn-export" onclick="exportAllData()">
+                    <i class="fas fa-download"></i> Export All Data
+                </button>
+                <button class="btn btn-view" onclick="refreshPatients()" style="float: right;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Critical Alerts Panel -->
+        <div class="card" id="critical-alerts">
+            <div class="card-header">
+                <h2 class="card-title">Critical Alerts</h2>
+                <i class="fas fa-exclamation-circle card-icon"></i>
+            </div>
+            <div id="alertsPanel">
+                <!-- Alerts loaded by JavaScript -->
+            </div>
+            <div class="text-center mt-10">
+                <button class="btn btn-view" onclick="viewExceptionReport()">
+                    Generate Exception Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Patient Detail View -->
+        <div class="card hidden" id="patient-detail">
+            <div class="patient-header">
+                <div>
+                    <h2 id="detailPatientName">Patient Details</h2>
+                    <div class="status-indicator status-critical mt-10" id="detailStatus">
+                        Critical - Asymmetry: 23%
+                    </div>
+                </div>
+                <div>
+                    <button class="btn btn-export" onclick="exportPatientData()">
+                        <i class="fas fa-download"></i> Export Data
+                    </button>
+                    <button class="btn btn-view" onclick="hidePatientDetail()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+
+            <div class="patient-info-grid">
+                <div class="info-group">
+                    <label>Patient ID:</label>
+                    <span id="detailPatientId">P-103</span>
+                </div>
+                <div class="info-group">
+                    <label>Age:</label>
+                    <span id="detailAge">65</span>
+                </div>
+                <div class="info-group">
+                    <label>Condition:</label>
+                    <span id="detailCondition">Stroke Recovery</span>
+                </div>
+                <div class="info-group">
+                    <label>Contact:</label>
+                    <span id="detailContact">john.doe@email.com</span>
+                </div>
+            </div>
+
+            <div class="chart-container mt-20" style="height: 250px;">
+                <canvas id="detailChart"></canvas>
+            </div>
+
+            <div class="mt-20">
+                <h3>Recent Readings</h3>
+                <table class="data-table mt-10">
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Left Gait</th>
+                        <th>Right Gait</th>
+                        <th>Asymmetry</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody id="detailReadings">
+                    <!-- Detailed readings loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="notes-section">
+                <h3>Doctor's Notes</h3>
+                <textarea class="notes-input" id="doctorNotes"
+                          placeholder="Add your notes here...">Patient showing improvement in morning sessions but asymmetry increases in afternoon. Consider adjusting therapy schedule.</textarea>
+                <button class="btn btn-view" onclick="saveNotes()">
+                    <i class="fas fa-save"></i> Save Notes
+                </button>
+            </div>
+        </div>
+
+        <!-- Default Message when no patient selected -->
+        <div class="card" id="welcome-message">
+            <div class="text-center" style="padding: 40px;">
+                <i class="fas fa-user-md fa-5x" style="color: var(--light-blue); margin-bottom: 20px;"></i>
+                <h2>Welcome to Doctor Dashboard</h2>
+                <p class="mt-10">Select a patient from the list to view detailed information</p>
+                <p>Click on critical alerts to review urgent cases</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exception Report Modal -->
+<div class="modal" id="exceptionModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Exception Report</h2>
+            <button class="modal-close" onclick="closeExceptionModal()">&times;</button>
+        </div>
+        <div class="p-20" id="exceptionReportContent">
+            <!-- Report loaded from exception_report.html -->
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="charts.js"></script>
+<script>
+    // ===== DOCTOR DASHBOARD FUNCTIONS =====
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDoctorData();
+        setupEventListeners();
+    });
+
+    // Load doctor dashboard data
+    async function loadDoctorData() {
+        try {
+            // In real app, this would fetch from RED's database via API
+            const samplePatients = [
+                { id: 1, name: "John Doe", age: 65, condition: "Stroke Recovery",
+                    lastReading: "10:30 AM", asymmetry: 23, status: "critical",
+                    contact: "john@email.com", patientId: "P-103" },
+                { id: 2, name: "Sarah Miller", age: 58, condition: "Parkinson's",
+                    lastReading: "09:15 AM", asymmetry: 12, status: "normal",
+                    contact: "sarah@email.com", patientId: "P-104" },
+                { id: 3, name: "Mike Johnson", age: 72, condition: "Post-Surgery",
+                    lastReading: "Yesterday", asymmetry: 18, status: "borderline",
+                    contact: "mike@email.com", patientId: "P-105" },
+                { id: 4, name: "Emma Wilson", age: 45, condition: "MS",
+                    lastReading: "2 hours ago", asymmetry: 25, status: "critical",
+                    contact: "emma@email.com", patientId: "P-106" },
+                { id: 5, name: "Robert Chen", age: 61, condition: "Stroke Recovery",
+                    lastReading: "1 hour ago", asymmetry: 14, status: "normal",
+                    contact: "robert@email.com", patientId: "P-107" }
+            ];
+
+            const criticalAlerts = [
+                { patient: "John Doe", asymmetry: 23, time: "10:30 AM", reviewed: false, patientId: 1 },
+                { patient: "Emma Wilson", asymmetry: 25, time: "2 hours ago", reviewed: false, patientId: 4 },
+                { patient: "Mike Johnson", asymmetry: 18, time: "Yesterday", reviewed: true, patientId: 3 }
+            ];
+
+            updateDoctorDashboard(samplePatients, criticalAlerts);
+        } catch (error) {
+            console.error("Error loading doctor data:", error);
+            showError("Failed to load dashboard data.");
+        }
+    }
+
+    // Update doctor dashboard
+    function updateDoctorDashboard(patients, alerts) {
+        // Update stats
+        const totalPatients = patients.length;
+        const criticalPatients = patients.filter(p => p.status === 'critical').length;
+        const borderlinePatients = patients.filter(p => p.status === 'borderline').length;
+        const newAlerts = alerts.filter(a => !a.reviewed).length;
+
+        document.getElementById('totalPatients').textContent = totalPatients;
+        document.getElementById('criticalPatients').textContent = criticalPatients;
+        document.getElementById('borderlinePatients').textContent = borderlinePatients;
+        document.getElementById('newAlerts').textContent = newAlerts;
+
+        // Populate patient table
+        populatePatientsTable(patients);
+
+        // Populate alerts panel
+        populateAlertsPanel(alerts);
+    }
+
+    // Populate patients table
+    function populatePatientsTable(patients) {
+        const tableBody = document.getElementById('patientsTable');
+        tableBody.innerHTML = '';
+
+        patients.forEach(patient => {
+            const row = document.createElement('tr');
+
+            let statusClass, statusText;
+            if (patient.status === 'critical') {
+                statusClass = 'status-critical';
+                statusText = '🔴 Critical';
+            } else if (patient.status === 'borderline') {
+                statusClass = 'status-borderline';
+                statusText = '🟡 Borderline';
+            } else {
+                statusClass = 'status-normal';
+                statusText = '🟢 Normal';
+            }
+
+            row.innerHTML = `
+                    <td><strong>${patient.name}</strong></td>
+                    <td>${patient.age}</td>
+                    <td>${patient.condition}</td>
+                    <td>${patient.lastReading}</td>
+                    <td><strong>${patient.asymmetry}%</strong></td>
+                    <td><span class="table-badge ${statusClass}">${statusText}</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-view" onclick="viewPatientDetail(${patient.id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-export" onclick="exportSinglePatient(${patient.id})">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Populate alerts panel
+    function populateAlertsPanel(alerts) {
+        const alertsPanel = document.getElementById('alertsPanel');
+        alertsPanel.innerHTML = '';
+
+        if (alerts.length === 0) {
+            alertsPanel.innerHTML = '<p class="text-center">No critical alerts at this time</p>';
+            return;
+        }
+
+        alerts.forEach(alert => {
+            const alertCard = document.createElement('div');
+            alertCard.className = `alert-item ${alert.reviewed ? '' : 'critical pulse-alert'}`;
+            alertCard.innerHTML = `
+                    <div>
+                        <strong>${alert.reviewed ? '🟡 BORDERLINE' : '⚠️ CRITICAL ALERT'}</strong>
+                        <div>${alert.patient} - Asymmetry: ${alert.asymmetry}%</div>
+                        <div class="alert-time">Time: ${alert.time}</div>
+                    </div>
+                    <div>
+                        <button class="btn btn-view" onclick="viewPatientDetail(${alert.patientId})">
+                            View Details
+                        </button>
+                        ${!alert.reviewed ? `<button class="btn" onclick="markAsReviewed(this, '${alert.patient}')" style="background: #6C757D; color: white; margin-left: 5px;">
+                            Mark Reviewed
+                        </button>` : ''}
+                    </div>
+                `;
+
+            alertsPanel.appendChild(alertCard);
+        });
+    }
+
+    // View patient details
+    function viewPatientDetail(patientId) {
+        // Hide welcome message
+        document.getElementById('welcome-message').classList.add('hidden');
+
+        // Show patient detail section
+        const detailSection = document.getElementById('patient-detail');
+        detailSection.classList.remove('hidden');
+
+        // Scroll to detail section
+        detailSection.scrollIntoView({ behavior: 'smooth' });
+
+        // Load patient data (in real app, fetch from RED's database)
+        const patients = [
+            {
+                id: 1, name: "John Doe", age: 65, condition: "Stroke Recovery",
+                contact: "john.doe@email.com", patientId: "P-103",
+                currentAsymmetry: 23, status: "critical",
+                readings: [
+                    { date: "Today", time: "3:00 PM", left: 82, right: 68, asymmetry: 17, status: "borderline" },
+                    { date: "Today", time: "2:30 PM", left: 85, right: 65, asymmetry: 23, status: "critical" },
+                    { date: "Today", time: "1:45 PM", left: 80, right: 72, asymmetry: 10, status: "normal" },
+                    { date: "Today", time: "12:30 PM", left: 78, right: 70, asymmetry: 10, status: "normal" },
+                    { date: "Today", time: "11:15 AM", left: 82, right: 66, asymmetry: 19, status: "borderline" }
+                ]
+            },
+            {
+                id: 2, name: "Sarah Miller", age: 58, condition: "Parkinson's",
+                contact: "sarah@email.com", patientId: "P-104",
+                currentAsymmetry: 12, status: "normal"
+            },
+            {
+                id: 3, name: "Mike Johnson", age: 72, condition: "Post-Surgery",
+                contact: "mike@email.com", patientId: "P-105",
+                currentAsymmetry: 18, status: "borderline"
+            },
+            {
+                id: 4, name: "Emma Wilson", age: 45, condition: "MS",
+                contact: "emma@email.com", patientId: "P-106",
+                currentAsymmetry: 25, status: "critical"
+            },
+            {
+                id: 5, name: "Robert Chen", age: 61, condition: "Stroke Recovery",
+                contact: "robert@email.com", patientId: "P-107",
+                currentAsymmetry: 14, status: "normal"
+            }
+        ];
+
+        const patient = patients.find(p => p.id === patientId) || patients[0];
+
+        // Update detail view
+        document.getElementById('detailPatientName').textContent = patient.name;
+        document.getElementById('detailPatientId').textContent = patient.patientId;
+        document.getElementById('detailAge').textContent = patient.age;
+        document.getElementById('detailCondition').textContent = patient.condition;
+        document.getElementById('detailContact').textContent = patient.contact;
+
+        // Update status
+        const statusElement = document.getElementById('detailStatus');
+        statusElement.className = `status-indicator status-${patient.status}`;
+        statusElement.textContent = `${patient.status.charAt(0).toUpperCase() + patient.status.slice(1)} - Asymmetry: ${patient.currentAsymmetry}%`;
+
+        // Initialize detail chart
+        if (window.initializeDetailChart) {
+            initializeDetailChart({
+                labels: ['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM'],
+                data: patient.id === 1 ? [18, 19, 22, 23, 21, 20, 19] :
+                    patient.id === 4 ? [22, 24, 25, 23, 22, 24, 25] :
+                        [15, 16, 17, 18, 17, 16, 15]
+            });
+        }
+
+        // Populate detailed readings if available
+        if (patient.readings) {
+            populateDetailReadings(patient.readings);
+        }
+    }
+
+    // Populate detailed readings
+    function populateDetailReadings(readings) {
+        const tableBody = document.getElementById('detailReadings');
+        tableBody.innerHTML = '';
+
+        readings.forEach(reading => {
+            const row = document.createElement('tr');
+
+            let statusClass, statusText;
+            if (reading.asymmetry > 20) {
+                statusClass = 'status-critical';
+                statusText = 'Critical';
+            } else if (reading.asymmetry >= 15) {
+                statusClass = 'status-borderline';
+                statusText = 'Borderline';
+            } else {
+                statusClass = 'status-normal';
+                statusText = 'Normal';
+            }
+
+            row.innerHTML = `
+                    <td>${reading.date}</td>
+                    <td>${reading.time}</td>
+                    <td>${reading.left}</td>
+                    <td>${reading.right}</td>
+                    <td><strong>${reading.asymmetry}%</strong></td>
+                    <td><span class="table-badge ${statusClass}">${statusText}</span></td>
+                `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Mark alert as reviewed
+    function markAsReviewed(button, patientName) {
+        button.textContent = '✓ Reviewed';
+        button.style.background = '#28A745';
+        button.onclick = null;
+
+        // Remove pulse animation from parent
+        button.closest('.alert-item').classList.remove('pulse-alert');
+
+        // Update notification count
+        const countElement = document.getElementById('notificationCount');
+        let count = parseInt(countElement.textContent);
+        if (count > 0) {
+            countElement.textContent = count - 1;
+        }
+
+        // Update new alerts count
+        const newAlertsElement = document.getElementById('newAlerts');
+        let newAlerts = parseInt(newAlertsElement.textContent);
+        if (newAlerts > 0) {
+            newAlertsElement.textContent = newAlerts - 1;
+        }
+    }
+
+    // Show exception report
+    function viewExceptionReport() {
+        // Load exception report content
+        fetch('exception_report.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('exceptionReportContent').innerHTML = html;
+                document.getElementById('exceptionModal').style.display = 'flex';
+
+                // Initialize chart in exception report
+                setTimeout(() => {
+                    if (window.initializeExceptionChart) {
+                        initializeExceptionChart();
+                    }
+                }, 100);
+            })
+            .catch(error => {
+                console.error("Error loading exception report:", error);
+                // Fallback: create basic exception report
+                document.getElementById('exceptionReportContent').innerHTML = `
+                        <div class="exception-report">
+                            <h2 style="color: var(--danger-red);">Exception Report</h2>
+                            <p>Unable to load full report. Showing summary:</p>
+                            <div class="alert-item critical">
+                                <strong>Critical Case: John Doe</strong>
+                                <p>Asymmetry >20% for 3 consecutive days</p>
+                            </div>
+                            <div class="alert-item">
+                                <strong>Borderline Case: Mike Johnson</strong>
+                                <p>Asymmetry consistently 15-20%</p>
+                            </div>
+                        </div>
+                    `;
+                document.getElementById('exceptionModal').style.display = 'flex';
+            });
+    }
+
+    // Close exception modal
+    function closeExceptionModal() {
+        document.getElementById('exceptionModal').style.display = 'none';
+    }
+
+    // Export all data
+    function exportAllData() {
+        // In real app, this would generate CSV from RED's database
+        alert("Exporting all patient data to CSV...");
+        // Simulate CSV download
+        const link = document.createElement('a');
+        link.href = 'data:text/csv;charset=utf-8,Patient,Age,Condition,Asymmetry,Status\nJohn Doe,65,Stroke Recovery,23,Critical\nSarah Miller,58,Parkinson\'s,12,Normal\nMike Johnson,72,Post-Surgery,18,Borderline\nEmma Wilson,45,MS,25,Critical\nRobert Chen,61,Stroke Recovery,14,Normal';
+        link.download = 'patient_data_export.csv';
+        link.click();
+    }
+
+    // Export single patient data
+    function exportSinglePatient(patientId) {
+        alert(`Exporting data for patient ${patientId}...`);
+        // In real app, fetch patient data and generate CSV
+    }
+
+    // Export current patient data
+    function exportPatientData() {
+        const patientName = document.getElementById('detailPatientName').textContent;
+        alert(`Exporting data for ${patientName}...`);
+    }
+
+    // Save doctor's notes
+    function saveNotes() {
+        const notes = document.getElementById('doctorNotes').value;
+        const patientName = document.getElementById('detailPatientName').textContent;
+
+        // In real app, save to RED's database
+        console.log(`Saving notes for ${patientName}:`, notes);
+
+        // Show success message
+        const originalText = event.target.innerHTML;
+        event.target.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        event.target.style.background = '#28A745';
+
+        setTimeout(() => {
+            event.target.innerHTML = originalText;
+            event.target.style.background = '';
+        }, 2000);
+    }
+
+    // Hide patient detail view
+    function hidePatientDetail() {
+        document.getElementById('patient-detail').classList.add('hidden');
+        document.getElementById('welcome-message').classList.remove('hidden');
+    }
+
+    // Refresh patient list
+    function refreshPatients() {
+        loadDoctorData();
+
+        // Show refresh animation
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showToast("Patient list refreshed!");
+        }, 1000);
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+        // Notification button
+        document.getElementById('notificationBtn').onclick = function() {
+            showToast("You have " + document.getElementById('notificationCount').textContent + " unread notifications");
+        };
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const exceptionModal = document.getElementById('exceptionModal');
+            if (event.target === exceptionModal) {
+                closeExceptionModal();
+            }
+        };
+
+        // Simulate live updates (for demo)
+        setInterval(simulateDoctorLiveUpdates, 30000);
+    }
+
+    // Simulate live updates for doctor dashboard
+    function simulateDoctorLiveUpdates() {
+        // Randomly update a patient's status
+        const patients = document.querySelectorAll('#patientsTable tr');
+        if (patients.length > 0) {
+            const randomIndex = Math.floor(Math.random() * patients.length);
+            const patientRow = patients[randomIndex];
+            const cells = patientRow.querySelectorAll('td');
+
+            // Random asymmetry between 5-30%
+            const newAsymmetry = Math.floor(Math.random() * 26) + 5;
+            cells[4].innerHTML = `<strong>${newAsymmetry}%</strong>`;
+
+            // Update status
+            let statusClass, statusText;
+            if (newAsymmetry > 20) {
+                statusClass = 'status-critical';
+                statusText = '🔴 Critical';
+            } else if (newAsymmetry >= 15) {
+                statusClass = 'status-borderline';
+                statusText = '🟡 Borderline';
+            } else {
+                statusClass = 'status-normal';
+                statusText = '🟢 Normal';
+            }
+
+            cells[5].innerHTML = `<span class="table-badge ${statusClass}">${statusText}</span>`;
+
+            // If new asymmetry > 20%, add to alerts
+            if (newAsymmetry > 20) {
+                const patientName = cells[0].textContent;
+                const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                // Add to alerts panel
+                const alertsPanel = document.getElementById('alertsPanel');
+                const alertCard = document.createElement('div');
+                alertCard.className = 'alert-item critical pulse-alert';
+                alertCard.innerHTML = `
+                        <div>
+                            <strong>⚠️ CRITICAL ALERT</strong>
+                            <div>${patientName} - Asymmetry: ${newAsymmetry}%</div>
+                            <div class="alert-time">Time: ${time}</div>
+                        </div>
+                        <div>
+                            <button class="btn btn-view" onclick="viewPatientDetail(${randomIndex + 1})">
+                                View Details
+                            </button>
+                            <button class="btn" onclick="markAsReviewed(this, '${patientName}')" style="background: #6C757D; color: white; margin-left: 5px;">
+                                Mark Reviewed
+                            </button>
+                        </div>
+                    `;
+
+                // Add to top of alerts
+                if (alertsPanel.firstChild) {
+                    alertsPanel.insertBefore(alertCard, alertsPanel.firstChild);
+                } else {
+                    alertsPanel.appendChild(alertCard);
+                }
+
+                // Update counts
+                const criticalCount = parseInt(document.getElementById('criticalPatients').textContent) + 1;
+                document.getElementById('criticalPatients').textContent = criticalCount;
+
+                const alertCount = parseInt(document.getElementById('newAlerts').textContent) + 1;
+                document.getElementById('newAlerts').textContent = alertCount;
+                document.getElementById('notificationCount').textContent = alertCount;
+
+                showToast(`New critical alert for ${patientName}: ${newAsymmetry}% asymmetry`);
+            }
+        }
+    }
+
+    // Show toast notification
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--primary-blue);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 5px;
+                z-index: 9999;
+                box-shadow: var(--shadow-lg);
+                animation: fadeInUp 0.3s ease;
+            `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'fadeOutDown 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 3000);
+    }
+
+    // Error handler
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--danger-red);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                z-index: 9999;
+            `;
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+
+        setTimeout(() => errorDiv.remove(), 5000);
+    }
+
+    // Logout function
+    function logout() {
+        if (confirm("Are you sure you want to logout?")) {
+            // In real app, this would clear session and redirect
+            alert("Redirecting to login page...");
+            // window.location.href = 'login.html';
+        }
+    }
+
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translate(-50%, 20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, 0);
+                }
+            }
+
+            @keyframes fadeOutDown {
+                from {
+                    opacity: 1;
+                    transform: translate(-50%, 0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translate(-50%, 20px);
+                }
+            }
+
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+    document.head.appendChild(style);
+</script>
+</body>
+</html>

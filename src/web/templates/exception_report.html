@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exception Report Lacunar Stroke Predictor</title>
+    <link rel="stylesheet" href="comstyle.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .exception-report {
+            padding: 20px;
+        }
+
+        .exception-header {
+            background: linear-gradient(135deg, var(--danger-red), var(--alert-orange));
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .exception-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .summary-card.critical {
+            border-top: 4px solid var(--danger-red);
+        }
+
+        .summary-card.warning {
+            border-top: 4px solid var(--warning-yellow);
+        }
+
+        .patient-exceptions {
+            margin-bottom: 30px;
+        }
+
+        .exception-item {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--danger-red);
+        }
+
+        .exception-item.borderline {
+            border-left-color: var(--warning-yellow);
+        }
+
+        .exception-charts {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .recommendations {
+            background: rgba(255, 193, 7, 0.1);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .recommendations h3 {
+            color: var(--warning-yellow);
+            margin-bottom: 15px;
+        }
+
+        .recommendations ul {
+            padding-left: 20px;
+        }
+
+        .recommendations li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .exception-summary,
+            .exception-charts {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="exception-report">
+    <div class="exception-header">
+        <h1><i class="fas fa-exclamation-triangle"></i> Exception Report</h1>
+        <p>Generated: <span id="reportDate">November 15, 2024, 11:45 AM</span></p>
+    </div>
+
+    <div class="exception-summary">
+        <div class="summary-card critical">
+            <div class="stat-value stat-critical" id="criticalCount">3</div>
+            <div>Critical Patients</div>
+            <small>(>20% asymmetry)</small>
+        </div>
+        <div class="summary-card warning">
+            <div class="stat-value stat-warning" id="borderlineCount">5</div>
+            <div>Borderline Patients</div>
+            <small>(15-20% asymmetry)</small>
+        </div>
+        <div class="summary-card">
+            <div class="stat-value" style="color: var(--primary-blue);" id="totalExceptions">8</div>
+            <div>Total Exceptions</div>
+            <small>Requiring attention</small>
+        </div>
+        <div class="summary-card">
+            <div class="stat-value" style="color: var(--primary-blue);" id="avgAsymmetry">19.2%</div>
+            <div>Average Asymmetry</div>
+            <small>Across exceptions</small>
+        </div>
+    </div>
+
+    <div class="patient-exceptions">
+        <h2><i class="fas fa-user-injured"></i> Patient Exceptions</h2>
+
+        <div class="exception-item">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                <div>
+                    <h3>John Doe (ID: P-103)</h3>
+                    <div class="status-indicator status-critical">Critical - Average: 23%</div>
+                </div>
+                <button class="btn btn-view" onclick="viewPatientDetails(103)">
+                    <i class="fas fa-chart-line"></i> View Trends
+                </button>
+            </div>
+            <p><strong>Pattern:</strong> Asymmetry consistently >20% in afternoon sessions (2-4 PM)</p>
+            <p><strong>Duration:</strong> 3 consecutive days above threshold</p>
+            <p><strong>Highest Reading:</strong> 28% on November 12, 2:30 PM</p>
+        </div>
+
+        <div class="exception-item">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                <div>
+                    <h3>Emma Wilson (ID: P-106)</h3>
+                    <div class="status-indicator status-critical">Critical - Average: 25%</div>
+                </div>
+                <button class="btn btn-view" onclick="viewPatientDetails(106)">
+                    <i class="fas fa-chart-line"></i> View Trends
+                </button>
+            </div>
+            <p><strong>Pattern:</strong> Consistently high asymmetry throughout day</p>
+            <p><strong>Duration:</strong> 5 days above critical threshold</p>
+            <p><strong>Highest Reading:</strong> 27% on November 14, 11:15 AM</p>
+        </div>
+
+        <div class="exception-item borderline">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                <div>
+                    <h3>Mike Johnson (ID: P-105)</h3>
+                    <div class="status-indicator status-borderline">Borderline - Average: 18%</div>
+                </div>
+                <button class="btn btn-view" onclick="viewPatientDetails(105)">
+                    <i class="fas fa-chart-line"></i> View Trends
+                </button>
+            </div>
+            <p><strong>Pattern:</strong> Gradual increase over past week</p>
+            <p><strong>Duration:</strong> Trending toward critical threshold</p>
+            <p><strong>Note:</strong> At risk of becoming critical case</p>
+        </div>
+    </div>
+
+    <div class="exception-charts">
+        <div class="chart-card">
+            <h3><i class="fas fa-chart-line"></i> Exception Trend</h3>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="exceptionTrendChart"></canvas>
+            </div>
+            <p class="text-center mt-10"><small>Number of patients above 20% threshold</small></p>
+        </div>
+
+        <div class="chart-card">
+            <h3><i class="fas fa-chart-pie"></i> Exception Distribution</h3>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="exceptionPieChart"></canvas>
+            </div>
+            <p class="text-center mt-10"><small>Breakdown of exception cases</small></p>
+        </div>
+    </div>
+
+    <div class="recommendations">
+        <h3><i class="fas fa-clipboard-check"></i> Recommendations & Actions</h3>
+        <ul>
+            <li><strong>Immediate Review:</strong> Schedule follow-up appointments for John Doe and Emma Wilson within 48 hours</li>
+            <li><strong>Therapy Adjustment:</strong> Consider increasing physical therapy sessions for critical cases</li>
+            <li><strong>Medication Review:</strong> Review medication timing and dosage for patients with afternoon spikes</li>
+            <li><strong>Monitoring:</strong> Increase reading frequency for borderline cases to catch deterioration early</li>
+            <li><strong>Patient Education:</strong> Provide additional guidance to patients on recognizing early warning signs</li>
+        </ul>
+    </div>
+
+    <div class="action-buttons">
+        <button class="btn btn-export" onclick="downloadPDFReport()">
+            <i class="fas fa-file-pdf"></i> Download PDF Report
+        </button>
+        <button class="btn btn-view" onclick="scheduleFollowUps()">
+            <i class="fas fa-calendar-plus"></i> Schedule Follow-ups
+        </button>
+        <button class="btn" onclick="closeReport()" style="background: #6C757D; color: white;">
+            <i class="fas fa-times"></i> Close Report
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize exception report
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeExceptionCharts();
+        updateReportDate();
+    });
+
+    // Update report date
+    function updateReportDate() {
+        const now = new Date();
+        const options = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        document.getElementById('reportDate').textContent = now.toLocaleDateString('en-US', options);
+    }
+
+    // Initialize charts for exception report
+    function initializeExceptionCharts() {
+        // Trend Chart
+        const trendCtx = document.getElementById('exceptionTrendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Nov 9', 'Nov 10', 'Nov 11', 'Nov 12', 'Nov 13', 'Nov 14', 'Today'],
+                datasets: [{
+                    label: 'Critical Cases (>20%)',
+                    data: [1, 2, 2, 3, 3, 2, 3],
+                    borderColor: '#DC3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3
+                },
+                    {
+                        label: 'Borderline Cases (15-20%)',
+                        data: [3, 4, 5, 4, 5, 5, 5],
+                        borderColor: '#FFC107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3
+                    }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        // Pie Chart
+        const pieCtx = document.getElementById('exceptionPieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Critical (>20%)', 'Borderline (15-20%)', 'Normal (<15%)'],
+                datasets: [{
+                    data: [3, 5, 16],
+                    backgroundColor: [
+                        '#DC3545',
+                        '#FFC107',
+                        '#28A745'
+                    ],
+                    borderWidth: 2,
+                    borderColor: 'white'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    // View patient details (called from exception report)
+    function viewPatientDetails(patientId) {
+        // In real app, this would open patient details in doctor dashboard
+        alert(`Opening details for patient ${patientId}...`);
+        // Close modal and open patient detail view
+        if (window.parent && window.parent.closeExceptionModal) {
+            window.parent.closeExceptionModal();
+            window.parent.viewPatientDetail(patientId);
+        }
+    }
+
+    // Download PDF report
+    function downloadPDFReport() {
+        alert("Generating and downloading PDF report...");
+        // In real app, generate PDF with charts and data
+    }
+
+    // Schedule follow-ups
+    function scheduleFollowUps() {
+        alert("Opening calendar to schedule follow-up appointments for all exception cases...");
+        // In real app, open calendar integration
+    }
+
+    // Close report
+    function closeReport() {
+        if (window.parent && window.parent.closeExceptionModal) {
+            window.parent.closeExceptionModal();
+        }
+    }
+
+    // Global function to initialize chart from doctor dashboard
+    function initializeExceptionChart() {
+        initializeExceptionCharts();
+    }
+</script>
+</body>
+</html>

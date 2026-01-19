@@ -38,7 +38,15 @@ def train_production_model():
     df = pd.read_csv(DATA_PATH)
     print(f"📊 Loaded {len(df)} records for training.")
 
-    features = ['left_sensory_score', 'right_sensory_score', 'asymmetry_index']
+    features = [
+        'left_sensory_score',
+        'right_sensory_score',
+        'asymmetry_index',
+        'hypertension',
+        'diabetes',
+        'smoking_history',
+        'score_velocity'
+    ]
     X = df[features]
     y = df['impact_tier']
 
@@ -48,7 +56,7 @@ def train_production_model():
     )
 
     # Train with hyperparameters from test_models
-    model = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42)
+    model = RandomForestClassifier(n_estimators=300, max_depth=18, random_state=42)
     model.fit(X_train, y_train)
 
     # Evaluation
