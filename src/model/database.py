@@ -39,7 +39,7 @@ def callProcedure(table_name, statement, *value):
         cursor = conn.cursor(dictionary=True)
         cursor.execute(f"{statement.lower()}", value)
         rows = cursor.fetchall()
-        if not rows: return None
+        if not rows: return []
         entity_class = ENTITY_REGISTRY[table_name.lower()]
         return [entity_class(**row) for row in rows]
     finally:
@@ -63,7 +63,7 @@ def getWhere(table_name, condition, *value):
         cursor = conn.cursor(dictionary=True)
         cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE {condition}", value)
         row = cursor.fetchone()
-        if not row: return []
+        if not row: return None
         entity_class = ENTITY_REGISTRY[table_name.lower()]
         return entity_class(**row)
     finally:

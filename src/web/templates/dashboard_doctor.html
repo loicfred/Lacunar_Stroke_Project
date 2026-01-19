@@ -55,22 +55,22 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <i class="fas fa-users fa-2x" style="color: var(--primary-blue);"></i>
-                    <div class="stat-value" id="totalPatients">24</div>
+                    <div class="stat-value" id="totalPatients">{{ criticalcount+borderlinecount+normalcount}}</div>
                     <div>Total Patients</div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-exclamation-circle fa-2x" style="color: var(--danger-red);"></i>
-                    <div class="stat-value stat-critical" id="criticalPatients">3</div>
+                    <div class="stat-value stat-critical" id="criticalPatients">{{criticalcount}}</div>
                     <div>Critical Cases</div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-exclamation-triangle fa-2x" style="color: var(--warning-yellow);"></i>
-                    <div class="stat-value stat-warning" id="borderlinePatients">5</div>
+                    <div class="stat-value stat-warning" id="borderlinePatients">{{borderlinecount}}</div>
                     <div>Borderline Cases</div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-bell fa-2x" style="color: var(--alert-orange);"></i>
-                    <div class="stat-value stat-warning" id="newAlerts">7</div>
+                    <div class="stat-value stat-warning" id="newAlerts">{{alertscount}}</div>
                     <div>New Alerts</div>
                 </div>
             </div>
