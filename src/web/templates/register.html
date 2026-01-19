@@ -21,7 +21,7 @@
             border-radius: 10px;
             box-shadow: 0 0 12px rgba(0,0,0,0.1);
             width: 400px;
-            text-align: center;
+            text-align: left;
         }
 
         .register-container h2 {
@@ -91,13 +91,35 @@
     <div id="errorMessage" class="error-message"></div>
 
     <form id="registerForm" action="/register" method="post">
-        <input type="email" name="email" placeholder="Email Address" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <select name="role" required>
-            <option value="" disabled selected>Select Role</option>
-            <option value="patient">Patient</option>
-            <option value="doctor">Doctor</option>
+        <label>First Name</label>
+        <input type="text" name="firstName" placeholder="First Name" required>
+
+        <label>Last Name</label>
+        <input type="text" name="lastName" placeholder="Last Name" required>
+
+        <label>Age Range</label>
+        <select name="age" required>
+            <option value="" disabled selected>Select</option>
+            <option value="30-39">30-39</option>
+            <option value="40–49">40–49</option>
+            <option value="50–59">50–59</option>
+            <option value="60–69">60–69</option>
+            <option value="70–79">70–79</option>
+            <option value="80+">80+</option>
         </select>
+
+        <label>Sex</label>
+        <select name="sex" required>
+            <option value="" disabled selected>Select</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+        </select>
+
+        <label>Email Address</label>
+        <input type="email" name="email" placeholder="Email Address" required>
+
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Register</button>
     </form>
 
