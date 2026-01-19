@@ -451,7 +451,7 @@ def login_page():
         if session.get('role') == 'doctor':
             return redirect('/dashboard/doctor')
         else:
-            return redirect('/dashboard/patient')
+            return redirect('/dashboard/patient/' + session.get('user_id'))
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -468,15 +468,6 @@ def logout():
     session.clear()
     return redirect('/')
 
-@app.route('/dataset') # Page to upload a dataset to view
-def upload_dataset():
-    return render_template('upload_dataset.html',model_loaded=model is not None)
-
-@app.route('/result')
-def result():
-    return render_template('result.html',model_loaded=model is not None)
-
-# Add these dashboard routes:
 @app.route('/dashboard/doctor')
 def doctor_dashboard():
     """Doctor dashboard"""
@@ -496,26 +487,43 @@ def doctor_dashboard():
         print(f"Dashboard error: {e}")
         return render_template('dashboard_doctor.html', error=str(e))
 
-@app.route('/dashboard-patient/<string:patient_id>')
-def dashboard_patient(patient_id):
-    patient_info = dbmanager.getByID('exception_report', patient_id)
-    readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
-    notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
-    return render_template('dashboard_patient.html',patient=patient_info,readings=readings, notifs=notifs,model_loaded=model is not None)
-
 @app.route('/exception-report')
 def exception_report():
-    exception_list = dbmanager.getAll('exception_report')
-    critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
-    borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
-    normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal')
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return redirect('/login')
+    try:
+        exception_list = dbmanager.getAll('exception_report')
+        critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
+        borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
+        normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal')
     
-    avg_asym = round(sum(exception.highest_reading_asymmetry_index for exception in exception_list) / len(exception_list) * 100, 2)
+        avg_asym = round(sum(exception.highest_reading_asymmetry_index for exception in exception_list) / len(exception_list) * 100, 2)
 
-    filtered_exception_list = [exception for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label in ['Critical', 'Borderline']]
+        filtered_exception_list = [exception for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label in ['Critical', 'Borderline']]
 
-    return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
+        return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
                            model_loaded=model is not None)
+    except Exception as e:
+        print(f"Dashboard error: {e}")
+        return render_template('exception_report.html', error=str(e))
+
+
+@app.route('/dashboard/patient')
+def default_dashboard():
+    return redirect('/login')
+
+@app.route('/dashboard/patient/<string:patient_id>')
+def dashboard_patient(patient_id):
+    if 'user_id' not in session or session.get('role') != 'doctor' and patient_id != session['user_id']:
+        return redirect('/login')
+    try:
+        patient_info = dbmanager.getByID('exception_report', patient_id)
+        readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
+        notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
+        return render_template('dashboard_patient.html',patient=patient_info,readings=readings, notifs=notifs,model_loaded=model is not None)
+    except Exception as e:
+        print(f"Dashboard error: {e}")
+        return render_template('dashboard_patient.html', error=str(e))
 
 
 # ========== MISC CONTROLLER ==========
@@ -534,6 +542,13 @@ def status():
         "message": "Green: Flask is running." + (" ML model loaded successfully!" if model else " Using threshold fallback.")
     })
 
+@app.route('/dataset') # Page to upload a dataset to view
+def upload_dataset():
+    return render_template('upload_dataset.html',model_loaded=model is not None)
+
+@app.route('/result')
+def result():
+    return render_template('result.html',model_loaded=model is not None)
 
 # ========== ERROR CONTROLLER ==========
 
