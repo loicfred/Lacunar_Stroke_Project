@@ -41,7 +41,7 @@ def test_auth_integration():
             if 'password' in missing_columns:
                 print("   ALTER TABLE user ADD COLUMN password VARCHAR(255) NOT NULL;")
             if 'role' in missing_columns:
-                print("   ALTER TABLE user ADD COLUMN role VARCHAR(50) DEFAULT 'patient';")
+                print("   ALTER TABLE user ADD COLUMN role VARCHAR(50) DEFAULT 'PATIENT';")
         else:
             print("✅ All required columns present in user table")
 

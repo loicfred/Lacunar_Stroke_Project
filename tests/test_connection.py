@@ -79,7 +79,7 @@ def test_connection():
                                                                      id INT PRIMARY KEY AUTO_INCREMENT,
                                                                      email VARCHAR(255) UNIQUE NOT NULL,
                                                                      password VARCHAR(255) NOT NULL,
-                                                                     role VARCHAR(50) DEFAULT 'patient',
+                                                                     role VARCHAR(50) DEFAULT 'PATIENT',
                                                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                                ); \
                                """

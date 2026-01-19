@@ -448,10 +448,10 @@ def login_page():
     """Handle login page - auth logic is in auth.py"""
     if 'user_id' in session:
         # Redirect to appropriate dashboard if already logged in
-        if session.get('role') == 'doctor':
+        if session['role'] == 'DOCTOR':
             return redirect('/dashboard/doctor')
         else:
-            return redirect('/dashboard/patient/' + session.get('user_id'))
+            return redirect('/dashboard/patient/' + str(session['user_id']))
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -471,7 +471,7 @@ def logout():
 @app.route('/dashboard/doctor')
 def doctor_dashboard():
     """Doctor dashboard"""
-    if 'user_id' not in session or session.get('role') != 'doctor':
+    if 'user_id' not in session or session['role']!= 'DOCTOR':
         return redirect('/login')
     try:
         user_id = session['user_id']
@@ -481,15 +481,14 @@ def doctor_dashboard():
         return render_template('dashboard_doctor.html',
                                doctor=doctor_info,
                                patients=patients,
-                               notifications=notifications,
-                               user_email=session.get('email'))
+                               notifications=notifications)
     except Exception as e:
         print(f"Dashboard error: {e}")
         return render_template('dashboard_doctor.html', error=str(e))
 
 @app.route('/exception-report')
 def exception_report():
-    if 'user_id' not in session or session.get('role') != 'doctor':
+    if 'user_id' not in session or session['role']!= 'DOCTOR':
         return redirect('/login')
     try:
         exception_list = dbmanager.getAll('exception_report')
@@ -514,7 +513,7 @@ def default_dashboard():
 
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
-    if 'user_id' not in session or session.get('role') != 'doctor' and patient_id != session['user_id']:
+    if 'user_id' not in session or session['role'] != 'DOCTOR' and patient_id != session['user_id']:
         return redirect('/login')
     try:
         patient_info = dbmanager.getByID('exception_report', patient_id)

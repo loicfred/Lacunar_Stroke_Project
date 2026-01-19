@@ -22,12 +22,12 @@ def register():
 
     email = data.get('email')
     password = data.get('password')
-    role = data.get('role', 'patient')
+    role = data.get('role', 'PATIENT')
 
     if not email or not password:
         return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
-    if role not in ['patient', 'doctor']:
+    if role not in ['PATIENT', 'DOCTOR']:
         return jsonify({'success': False, 'message': 'Invalid role'}), 400
 
     try:
@@ -40,7 +40,7 @@ def register():
         user_id = dbmanager.insert('user', user)
 
         # If registering as patient, create patient_info entry
-        if role == 'patient':
+        if role == 'PATIENT':
             patient = Patient_Info(id=user_id, first_name='', last_name='')
             patient.id = user_id
             dbmanager.insert('patient_info', patient)
@@ -73,29 +73,26 @@ def login():
         # Get user
         user = dbmanager.getWhere('user', 'email = ?', email)
 
-        if not user:
-            return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
-
-        # Check password
-        if not user.password:
-            return jsonify({'success': False, 'message': 'User record has no password field'}), 500
-
-        if not check_password_hash(user.password, password):
+        if not user or not check_password_hash(user.password, password):
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Set session data
-        session['user_id'] = user.ID
+        session['user_id'] = user.id
         session['email'] = user.email
         session['role'] = user.role
 
         # Get patient info if role is patient
-        if session['role'] == 'patient':
-            patient_info = dbmanager.getByID('patient_info', user.ID)
+        if session['role'] == 'PATIENT':
+            patient_info = dbmanager.getByID('patient_info', user.id)
             if patient_info:
-                session['patient_name'] = f"{patient_info.first_name} {patient_info.last_name}".strip()
+                session['name'] = f"{patient_info.first_name} {patient_info.last_name}".strip()
+        elif session['role'] == 'DOCTOR':
+            doctor_info = dbmanager.getByID('doctor_info', user.id)
+            if doctor_info:
+                session['name'] = f"{doctor_info.first_name} {doctor_info.last_name}".strip()
 
         # Redirect based on role
-        if session['role'] == 'doctor':
+        if session['role'] == 'DOCTOR':
             redirect_url = '/dashboard/doctor'
         else:
             redirect_url = '/dashboard/patient'

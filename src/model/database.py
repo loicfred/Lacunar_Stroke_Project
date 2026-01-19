@@ -199,7 +199,7 @@ def generate_sample_data():
             username=f"user_{i}_{random.randint(1000, 9999)}",
             email=f"user{i}@example.com",
             password=f"pass{random.randint(10000, 99999)}",
-            role=random.choice(["USER"])
+            role=random.choice(["PATIENT"])
         )
         user_id = insert("user", user)
 

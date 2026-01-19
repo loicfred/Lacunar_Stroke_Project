@@ -12,13 +12,13 @@ def get_notifications():
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
 
     user_id = session['user_id']
-    role = session.get('role', 'patient')
+    role = session['role']
 
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
 
-        if role in ['admin', 'doctor']:
+        if role in ['admin', 'DOCTOR']:
             # Admin/Doctor can see all notifications with user info
             cursor.execute('''
                            SELECT n.*, u.email, u.role
@@ -61,7 +61,7 @@ def create_notification():
     title = data.get('title', 'System Notification')
 
     # Only admin/doctor can create notifications for others
-    if session['role'] not in ['admin', 'doctor'] and target_user_id != session['user_id']:
+    if session['role'] not in ['admin', 'DOCTOR'] and target_user_id != session['user_id']:
         return jsonify({'success': False, 'message': 'Not authorized'}), 403
 
     try:
@@ -102,7 +102,7 @@ def delete_notification(notification_id):
             return jsonify({'success': False, 'message': 'Notification not found'}), 404
 
         # Only owner or admin/doctor can delete
-        if session['role'] not in ['admin', 'doctor'] and notification[0] != session['patient_id']:
+        if session['role'] not in ['admin', 'DOCTOR'] and notification[0] != session['patient_id']:
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Not authorized'}), 403
