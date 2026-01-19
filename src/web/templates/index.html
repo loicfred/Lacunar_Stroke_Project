@@ -19,7 +19,11 @@
     <div class="nav-title"> Lacunar Stroke Detection System</div>
     <div class="nav-links">
         <a href="#">Home</a>
-        <a href="#" id="logoutBtn">Logout</a>
+        {% if session.get('user_id') %}
+        <a href="/logout" id="loginBtn">Logout</a>
+        {% else %}
+        <a href="/login" id="logoutBtn">Login</a>
+        {% endif %}
     </div>
 </nav>
 
@@ -110,7 +114,5 @@
 
     <div id="result"></div>
 </div>
-
-<script src="../static/script.js"></script>
 </body>
 </html>
