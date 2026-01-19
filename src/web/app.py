@@ -447,19 +447,16 @@ def result():
 
 @app.route('/dashboard-doctor/<string:patient_id>')
 def dashboard_doctor(patient_id):
-    patient_info = dbmanager.callProcedure('patient_report', 'call lacunar_stroke.patient_report(?)', patient_id)
-    readings = dbmanager.getAllWhere('reading', 'patient_id = ?', patient_id)
-    return render_template('dashboard_doctor.html',patient_info=patient_info.__dict__,readings=jsonify({
-        "readings": [r.__dict__ for r in readings],
-    }),model_loaded=model is not None)
+    patient_info = dbmanager.getByID('exception_report', patient_id)
+    readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
+    return render_template('dashboard_doctor.html',patient=patient_info,readings=readings,model_loaded=model is not None)
 
 @app.route('/dashboard-patient/<string:patient_id>')
 def dashboard_patient(patient_id):
-    patient_info = dbmanager.callProcedure('patient_report', 'call lacunar_stroke.patient_report(?)', patient_id)
-    readings = dbmanager.getAllWhere('reading', 'patient_id = ?', patient_id)
-    return render_template('dashboard_patient.html',patient_info=patient_info.__dict__,readings=jsonify({
-        "readings": [r.__dict__ for r in readings],
-    }),model_loaded=model is not None)
+    patient_info = dbmanager.getByID('exception_report', patient_id)
+    readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
+    print(readings[0].__dict__)
+    return render_template('dashboard_patient.html',patient=patient_info,readings=readings,model_loaded=model is not None)
 
 @app.route('/exception-report')
 def exception_report():

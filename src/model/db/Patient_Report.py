@@ -35,3 +35,10 @@ class Patient_Report:
         self.latest_reading_average_asymmetry = kwargs.get("latest_reading_average_asymmetry")
         self.latest_reading_asymmetry_index = kwargs.get("latest_reading_asymmetry_index")
         self.latest_reading_risk_label = kwargs.get("latest_reading_risk_label")
+
+        self.doctor_id = kwargs.get("doctor_id")
+        self.doctor_first_name = kwargs.get("doctor_first_name")
+        self.doctor_last_name = kwargs.get("doctor_last_name")
+        self.doctor_title = kwargs.get("doctor_title")
+        self.doctor_qualification = kwargs.get("doctor_qualification")
+        self.doctor_profession = kwargs.get("doctor_profession")

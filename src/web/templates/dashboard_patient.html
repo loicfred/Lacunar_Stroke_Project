@@ -43,22 +43,22 @@
                 <i class="fas fa-heartbeat card-icon"></i>
             </div>
             <div class="text-center">
-                <div class="asymmetry-percentage percentage-normal" id="currentAsymmetry">
-                    12%
+                <div class="asymmetry-percentage percentage-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %}" id="currentAsymmetry">
+                    {{ (patient.latest_reading_asymmetry_index*100) | round(4) }}%
                 </div>
                 <p>Asymmetry Percentage</p>
-                <div class="status-indicator status-normal mt-10" id="statusIndicator">
-                    Normal (< 15%)
+                <div class="status-indicator status-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %} mt-10" id="statusIndicator">
+                    {% if patient.avg_risk_label == 'Critical' %}Critical (> 20%){% elif patient.avg_risk_label == 'Borderline ' %}Borderline (15%-20%){% else %}Normal (< 15%){% endif %}
                 </div>
             </div>
             <div class="mt-20">
                 <div class="info-group">
-                    <label>Today's Average:</label>
-                    <span id="todayAverage">14.2%</span>
+                    <label>Total Average Asymmetry :</label>
+                    <span id="avgAsymmetryIndex">{{ (patient.avg_asymmetry_index*100) | round(4) }}%</span>
                 </div>
                 <div class="info-group mt-10">
                     <label>Last Reading:</label>
-                    <span id="lastReadingTime">10:30 AM</span>
+                    <span id="lastReadingTime">{{ (patient.latest_reading_timestamp) }}</span>
                 </div>
             </div>
         </div>
@@ -95,6 +95,18 @@
                 </thead>
                 <tbody id="readingsTable">
                 <!-- Data populated by JavaScript -->
+
+                {% for reading in readings %}
+                <tr>
+                    <td>{{ reading.timestamp }}</td>
+                    <td>{{ (reading.left_sensory_score) | round(4) }}</td>
+                    <td>{{ (reading.right_sensory_score) | round(4) }}</td>
+                    <td><strong>{{ (reading.asymmetry_index*100) | round(4) }}</strong></td>
+                    <td><span class="table-badge status-{% if reading.risk_label == 'Critical' %}critical{% elif reading.risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %}">
+                        {{ reading.risk_label }}
+                    </span></td>
+                </tr>
+                {% endfor %}
                 </tbody>
             </table>
             <button class="btn btn-view mt-10" onclick="loadMoreReadings()">
@@ -142,7 +154,7 @@
                 </div>
                 <div class="progress-item">
                     <i class="fas fa-user-md fa-2x" style="color: var(--primary-blue);"></i>
-                    <div>Dr. Smith</div>
+                    <h4>{{ patient.doctor_title }}. {{ patient.doctor_first_name }} {{ patient.doctor_last_name }}</h4>
                     <div class="mt-10" id="lastNote">"Good progress this week"</div>
                 </div>
             </div>
@@ -167,93 +179,6 @@
 <script src="../static/charts.js"></script>
 <script>
     // ===== PATIENT DASHBOARD FUNCTIONS =====
-
-    // Initialize dashboard
-    document.addEventListener('DOMContentLoaded', function() {
-        loadPatientData();
-        initializePatientCharts();
-
-        // Setup event listeners
-        document.getElementById('notificationBtn').onclick = showNotifications;
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('notificationModal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        };
-
-        // Simulate live data updates (for demo)
-        setInterval(simulateLiveData, 15000);
-    });
-
-    // Load patient data from database
-    async function loadPatientData() {
-        try {
-            // In a real app, this would fetch from RED's database via API
-            // For demo, we use sample data
-            const sampleData = {
-                name: "John Doe",
-                currentAsymmetry: 12,
-                todayAverage: 14.2,
-                lastReading: "10:30 AM",
-                status: "normal",
-                readings: [
-                    { time: "10:30 AM", left: 85, right: 65, asymmetry: 23, status: "critical" },
-                    { time: "09:45 AM", left: 78, right: 75, asymmetry: 4, status: "normal" },
-                    { time: "08:15 AM", left: 80, right: 64, asymmetry: 20, status: "borderline" },
-                    { time: "Yesterday 3:30 PM", left: 82, right: 78, asymmetry: 5, status: "normal" },
-                    { time: "Yesterday 1:15 PM", left: 75, right: 60, asymmetry: 20, status: "borderline" }
-                ],
-                alerts: [
-                    { time: "10:30 AM", message: "Critical: Asymmetry reached 23%", critical: true },
-                    { time: "Yesterday 1:15 PM", message: "Warning: Asymmetry at 20%", critical: false },
-                    { time: "Jun 12, 2:30 PM", message: "Critical: Asymmetry reached 28%", critical: true }
-                ],
-                progress: {
-                    completed: 6,
-                    compliance: 75,
-                    bestScore: 8,
-                    lastNote: "Good progress this week"
-                }
-            };
-
-            updatePatientDashboard(sampleData);
-        } catch (error) {
-            console.error("Error loading patient data:", error);
-            showError("Failed to load patient data. Please try again.");
-        }
-    }
-
-    // Update dashboard with patient data
-    function updatePatientDashboard(data) {
-        // Update patient info
-        document.getElementById('patientName').textContent = data.name;
-        document.getElementById('currentAsymmetry').textContent = data.currentAsymmetry + '%';
-        document.getElementById('todayAverage').textContent = data.todayAverage + '%';
-        document.getElementById('lastReadingTime').textContent = data.lastReading;
-
-        // Update status
-        updateStatusIndicator(data.currentAsymmetry);
-
-        // Populate readings table
-        populateReadingsTable(data.readings);
-
-        // Populate alerts
-        populateAlerts(data.alerts);
-
-        // Update notification count
-        const criticalAlerts = data.alerts.filter(a => a.critical &&
-            a.time.includes('Today') || a.time.includes('10:30')).length;
-        document.getElementById('notificationCount').textContent = criticalAlerts;
-
-        // Update progress
-        document.getElementById('completedReadings').textContent = data.progress.completed;
-        document.getElementById('complianceRate').textContent = data.progress.compliance + '%';
-        document.getElementById('bestScore').textContent = data.progress.bestScore + '%';
-        document.getElementById('lastNote').textContent = '"' + data.progress.lastNote + '"';
-    }
 
     // Update status indicator based on asymmetry percentage
     function updateStatusIndicator(asymmetry) {
@@ -287,37 +212,28 @@
         document.getElementById('currentStatusBadge').className = `status-indicator status-${status}`;
         document.getElementById('currentStatusBadge').textContent = text.split(' ')[0];
     }
-
     // Populate readings table
-    function populateReadingsTable(readings) {
+    function addNewReading(reading) {
         const tableBody = document.getElementById('readingsTable');
-        tableBody.innerHTML = '';
-
-        readings.forEach(reading => {
-            const row = document.createElement('tr');
-
-            let statusClass, statusText;
-            if (reading.asymmetry > 20) {
-                statusClass = 'status-critical';
-                statusText = '⚠️ Critical';
-            } else if (reading.asymmetry >= 15) {
-                statusClass = 'status-borderline';
-                statusText = '⚠️ Borderline';
-            } else {
-                statusClass = 'status-normal';
-                statusText = '✓ Normal';
-            }
-
-            row.innerHTML = `
-                    <td>${reading.time}</td>
-                    <td>${reading.left}</td>
-                    <td>${reading.right}</td>
-                    <td><strong>${reading.asymmetry}%</strong></td>
-                    <td><span class="table-badge ${statusClass}">${statusText}</span></td>
-                `;
-
-            tableBody.appendChild(row);
-        });
+        let statusClass, statusText;
+        if (reading.asymmetry > 20) {
+            statusClass = 'status-critical';
+            statusText = 'Critical';
+        } else if (reading.asymmetry >= 15) {
+            statusClass = 'status-borderline';
+            statusText = 'Borderline';
+        } else {
+            statusClass = 'status-normal';
+            statusText = 'Normal';
+        }
+        tableBody.insertAdjacentHTML('afterbegin',
+            `<tr>
+                <td>${reading.time}</td>
+                <td>${reading.left}</td>
+                <td>${reading.right}</td>
+                <td><strong>${reading.asymmetry}%</strong></td>
+                <td><span class="table-badge ${statusClass}">${statusText}</span></td>
+            </tr>`);
     }
 
     // Populate alerts list
@@ -372,33 +288,37 @@
                 </div>
             `;
     }
-
-    // Close modal
-    function closeModal() {
-        document.getElementById('notificationModal').style.display = 'none';
-    }
-
-    // Show alert details
-    function showAlertDetails(alert) {
-        alert(`Alert Details:\n\n${alert.message}\n\nTime: ${alert.time}\n\nThis alert was ${alert.critical ? 'CRITICAL' : 'a warning'}.`);
-    }
-
-    // Show all alerts
-    function showAllAlerts() {
-        showNotifications();
-    }
-
     // Clear notifications
     function clearAllNotifications() {
         document.getElementById('notificationCount').textContent = '0';
         document.getElementById('alertList').innerHTML = '<li>No alerts to show</li>';
         closeModal();
     }
+    // Close modal
+    function closeModal() {
+        document.getElementById('notificationModal').style.display = 'none';
+    }
 
-    // Load more readings
-    function loadMoreReadings() {
-        alert("Loading more readings from database...");
-        // In real app, this would fetch additional data from RED's database
+    // Show alert details
+    function addNewAlert(asymmetry, time) {
+        const alertList = document.getElementById('alertList');
+        const alertItem = document.createElement('li');
+        alertItem.className = 'alert-item critical';
+        alertItem.innerHTML = `
+                    <div>
+                        <strong>Live Alert: Asymmetry reached ${asymmetry}%</strong>
+                        <div class="alert-time">${time}</div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                `;
+        alertList.insertAdjacentHTML('afterbegin', alertItem.outerHTML);
+    }
+    function showAlertDetails(alert) {
+        alert(`Alert Details:\n\n${alert.message}\n\nTime: ${alert.time}\n\nThis alert was ${alert.critical ? 'CRITICAL' : 'a warning'}.`);
+    }
+    // Show all alerts
+    function showAllAlerts() {
+        showNotifications();
     }
 
     // Simulate live data updates
@@ -437,14 +357,11 @@
             // Update notification count
             const count = parseInt(document.getElementById('notificationCount').textContent) + 1;
             document.getElementById('notificationCount').textContent = count;
-
-            // Show notification
-            showLiveNotification(`Critical: Asymmetry reached ${randomAsymmetry}%`);
         }
     }
 
     // Show live notification
-    function showLiveNotification(message) {
+    function showToastNotification(message) {
         // Create toast notification
         const toast = document.createElement('div');
         toast.style.cssText = `
@@ -504,6 +421,23 @@
             // window.location.href = 'login.html';
         }
     }
+
+    function checkForNewData() {
+        let found = false;
+        if (found) {
+            let lastest_asymmetry = 0;
+            updateStatusIndicator(lastest_asymmetry);
+            addNewReading(null);
+            updatePatientChart(0);
+            if (lastest_asymmetry > 20) {
+                showToastNotification(`Critical: Asymmetry reached ${lastest_asymmetry}%`);
+                addNewAlert(lastest_asymmetry, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))
+            }
+        }
+    }
+
+
+    setInterval(checkForNewData, 15000);
 </script>
 </body>
 </html>
