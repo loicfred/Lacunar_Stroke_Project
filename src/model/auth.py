@@ -1,27 +1,16 @@
 from flask import Blueprint, request, jsonify, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
+import src.model.database as dbmanager
 import sys
 import os
+
+from model.db.Patient_Info import Patient_Info
+from model.db.User import User
 
 # Fix import path - database.py is in src/sample/
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'sample'))
 
-try:
-    from database import get_connection
-    print("✅ Successfully imported database functions from src/sample/")
-except ImportError as e:
-    print(f"❌ Import error: {e}")
-    # Direct connection as fallback
-    import mariadb
 
-    def get_connection():
-        return mariadb.connect(
-            user="Lacunar",
-            password="LacunarStroke1234",
-            host="54.37.40.206",
-            port=3306,
-            database="lacunar_stroke"
-        )
 
 # Create Blueprint for authentication
 auth_bp = Blueprint('auth', __name__)
@@ -43,38 +32,20 @@ def register():
 
     try:
         # Check if user already exists
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute('SELECT id FROM user WHERE email = %s', (email,))
-        existing_user = cursor.fetchone()
-
-        if existing_user:
-            cursor.close()
-            conn.close()
+        if dbmanager.getWhere('user', 'email = ?', email):
             return jsonify({'success': False, 'message': 'Email already registered'}), 400
 
-        # Hash password
-        hashed_password = generate_password_hash(password)
-
-        # Insert user
-        cursor.execute(
-            'INSERT INTO user (email, password, role) VALUES (%s, %s, %s)',
-            (email, hashed_password, role)
-        )
-
-        user_id = cursor.lastrowid
+        # Create user
+        user = User(email=email, password=generate_password_hash(password), role=role)
+        user_id = dbmanager.insert('user', user)
 
         # If registering as patient, create patient_info entry
         if role == 'patient':
-            cursor.execute(
-                '''INSERT INTO patient_info (id, first_name, last_name)
-                   VALUES (%s, %s, %s)''',
-                (user_id, '', '')
-            )
+            patient = Patient_Info(id=user_id, first_name='', last_name='')
+            patient.id = user_id
+            dbmanager.insert('patient_info', patient)
+        ## do as doctor after
 
-        conn.commit()
-        cursor.close()
-        conn.close()
 
         return jsonify({
             'success': True,
@@ -100,42 +71,28 @@ def login():
 
     try:
         # Get user
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute('SELECT * FROM user WHERE email = %s', (email,))
-        user = cursor.fetchone()
+        user = dbmanager.getWhere('user', 'email = ?', email)
 
         if not user:
-            cursor.close()
-            conn.close()
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Check password
         if 'password' not in user:
-            cursor.close()
-            conn.close()
             return jsonify({'success': False, 'message': 'User record has no password field'}), 500
 
         if not check_password_hash(user['password'], password):
-            cursor.close()
-            conn.close()
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Set session data
-        session['user_id'] = user['id']
-        session['email'] = user['email']
-        session['role'] = user.get('role', 'patient')
+        session['user_id'] = user.ID
+        session['email'] = user.email
+        session['role'] = user.role
 
         # Get patient info if role is patient
         if session['role'] == 'patient':
-            cursor.execute('SELECT * FROM patient_info WHERE id = %s', (user['id'],))
-            patient_info = cursor.fetchone()
-
+            patient_info = dbmanager.getByID('patient_info', user.ID)
             if patient_info:
-                session['patient_name'] = f"{patient_info.get('first_name', '')} {patient_info.get('last_name', '')}".strip()
-
-        cursor.close()
-        conn.close()
+                session['patient_name'] = f"{patient_info.first_name} {patient_info.last_name}".strip()
 
         # Redirect based on role
         if session['role'] == 'doctor':

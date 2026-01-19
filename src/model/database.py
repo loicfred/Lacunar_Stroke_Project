@@ -35,43 +35,63 @@ ENTITY_REGISTRY = {
 
 def callProcedure(table_name, statement, *value):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"{statement.lower()}", value)
-    row = cursor.fetchone()
-    if not row: return None
-    entity_class = ENTITY_REGISTRY[table_name.lower()]
-    conn.close()
-    return entity_class(**row)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"{statement.lower()}", value)
+        row = cursor.fetchone()
+        if not row: return None
+        entity_class = ENTITY_REGISTRY[table_name.lower()]
+        return entity_class(**row)
+    finally:
+        conn.close()
 
 def getByID(table_name, entity_id):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE id = ?", (entity_id,))
-    row = cursor.fetchone()
-    if not row: return None
-    entity_class = ENTITY_REGISTRY[table_name.lower()]
-    conn.close()
-    return entity_class(**row)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE id = ?", (entity_id,))
+        row = cursor.fetchone()
+        if not row: return None
+        entity_class = ENTITY_REGISTRY[table_name.lower()]
+        return entity_class(**row)
+    finally:
+        conn.close()
+
+def getWhere(table_name, condition, *value):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE {condition}", value)
+        row = cursor.fetchone()
+        if not row: return []
+        entity_class = ENTITY_REGISTRY[table_name.lower()]
+        return entity_class(**row)
+    finally:
+        conn.close()
 
 def getAll(table_name):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"SELECT * FROM {table_name.lower()}")
-    rows = cursor.fetchall()
-    if not rows: return []
-    entity_class = ENTITY_REGISTRY[table_name.lower()]
-    conn.close()
-    return [entity_class(**row) for row in rows]
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"SELECT * FROM {table_name.lower()}")
+        rows = cursor.fetchall()
+        if not rows: return []
+        entity_class = ENTITY_REGISTRY[table_name.lower()]
+        return [entity_class(**row) for row in rows]
+    finally:
+        conn.close()
 
 def getAllWhere(table_name, condition, *value):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE {condition}", value)
-    rows = cursor.fetchall()
-    if not rows: return []
-    entity_class = ENTITY_REGISTRY[table_name.lower()]
-    conn.close()
-    return [entity_class(**row) for row in rows]
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE {condition}", value)
+        rows = cursor.fetchall()
+        if not rows: return []
+        entity_class = ENTITY_REGISTRY[table_name.lower()]
+        return [entity_class(**row) for row in rows]
+    finally:
+        conn.close()
 
 def insert(table_name, entity):
     conn = get_connection()
