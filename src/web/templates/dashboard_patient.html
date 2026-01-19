@@ -124,7 +124,7 @@
                 <!-- Alerts populated by JavaScript -->
             </ul>
             <div class="text-center mt-10">
-                <button class="btn btn-view" onclick="showAllAlerts()">
+                <button class="btn btn-view">
                     View All Alerts
                 </button>
             </div>
@@ -167,7 +167,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Notifications</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" onclick="document.getElementById('notificationModal').style.display = 'none';">&times;</button>
         </div>
         <div class="p-20" id="notificationContent">
             <!-- Notifications loaded here -->
@@ -235,27 +235,22 @@
                 <td><span class="table-badge ${statusClass}">${statusText}</span></td>
             </tr>`);
     }
-
-    // Populate alerts list
-    function populateAlerts(alerts) {
+    // Add alert
+    function addNewAlert(asymmetry, time) {
         const alertList = document.getElementById('alertList');
-        alertList.innerHTML = '';
-
-        alerts.forEach(alert => {
-            const alertItem = document.createElement('li');
-            alertItem.className = `alert-item ${alert.critical ? 'critical' : ''}`;
-            alertItem.innerHTML = `
+        const alertItem = document.createElement('li');
+        alertItem.className = 'alert-item critical';
+        alertItem.innerHTML = `
                     <div>
-                        <strong>${alert.message}</strong>
-                        <div class="alert-time">${alert.time}</div>
+                        <strong>Live Alert: Asymmetry reached ${asymmetry}%</strong>
+                        <div class="alert-time">${time}</div>
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 `;
-
-            alertItem.onclick = () => showAlertDetails(alert);
-            alertList.appendChild(alertItem);
-        });
+        alertList.insertAdjacentHTML('afterbegin', alertItem.outerHTML);
     }
+
+
 
     // Show notification modal
     function showNotifications() {
@@ -292,34 +287,12 @@
     function clearAllNotifications() {
         document.getElementById('notificationCount').textContent = '0';
         document.getElementById('alertList').innerHTML = '<li>No alerts to show</li>';
-        closeModal();
-    }
-    // Close modal
-    function closeModal() {
         document.getElementById('notificationModal').style.display = 'none';
     }
 
-    // Show alert details
-    function addNewAlert(asymmetry, time) {
-        const alertList = document.getElementById('alertList');
-        const alertItem = document.createElement('li');
-        alertItem.className = 'alert-item critical';
-        alertItem.innerHTML = `
-                    <div>
-                        <strong>Live Alert: Asymmetry reached ${asymmetry}%</strong>
-                        <div class="alert-time">${time}</div>
-                    </div>
-                    <i class="fas fa-chevron-right"></i>
-                `;
-        alertList.insertAdjacentHTML('afterbegin', alertItem.outerHTML);
-    }
-    function showAlertDetails(alert) {
-        alert(`Alert Details:\n\n${alert.message}\n\nTime: ${alert.time}\n\nThis alert was ${alert.critical ? 'CRITICAL' : 'a warning'}.`);
-    }
-    // Show all alerts
-    function showAllAlerts() {
-        showNotifications();
-    }
+
+
+
 
     // Simulate live data updates
     function simulateLiveData() {
@@ -395,7 +368,7 @@
     }
 
     // Error handler
-    function showError(message) {
+    function showToastError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
                 position: fixed;

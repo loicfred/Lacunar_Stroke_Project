@@ -23,7 +23,7 @@ def get_notifications():
             cursor.execute('''
                            SELECT n.*, u.email, u.role
                            FROM notification n
-                                    JOIN user u ON n.user_id = u.id
+                                    JOIN user u ON n.patient_id = u.id
                            ORDER BY n.timestamp DESC
                            LIMIT 20
                            ''')
@@ -31,7 +31,7 @@ def get_notifications():
             # Patients only see their own notifications
             cursor.execute('''
                            SELECT * FROM notification
-                           WHERE user_id = ?
+                           WHERE patient_id = ?
                            ORDER BY timestamp DESC
                            LIMIT 20
                            ''', (user_id,))
@@ -69,7 +69,7 @@ def create_notification():
         cursor = conn.cursor()
 
         cursor.execute('''
-                       INSERT INTO notification (user_id, title, message, timestamp)
+                       INSERT INTO notification (patient_id, title, message, timestamp)
                        VALUES (?, ?, ?, NOW())
                        ''', (target_user_id, title, message))
 
@@ -93,7 +93,7 @@ def delete_notification(notification_id):
         cursor = conn.cursor()
 
         # Check ownership
-        cursor.execute('SELECT user_id FROM notification WHERE id = ?', (notification_id,))
+        cursor.execute('SELECT patient_id FROM notification WHERE id = ?', (notification_id,))
         notification = cursor.fetchone()
 
         if not notification:
@@ -102,7 +102,7 @@ def delete_notification(notification_id):
             return jsonify({'success': False, 'message': 'Notification not found'}), 404
 
         # Only owner or admin/doctor can delete
-        if session['role'] not in ['admin', 'doctor'] and notification[0] != session['user_id']:
+        if session['role'] not in ['admin', 'doctor'] and notification[0] != session['patient_id']:
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Not authorized'}), 403
