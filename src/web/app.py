@@ -476,8 +476,8 @@ def doctor_dashboard():
             return redirect('/login')
         user_id = session['user_id']
         doctor_info = dbmanager.getByID('doctor_info', user_id) if dbmanager.getByID('doctor_info', user_id) else None
-        patients = dbmanager.getAllWhere('patient_info', 'doctor_id = ?', user_id)[:10]  # First 10 patients
-        notifications = dbmanager.getAllWhere('notification', '1=1 ORDER BY timestamp DESC')[:5]
+        patients = dbmanager.getAllWhere('exception_report', 'doctor_id = ?', user_id)
+        notifications = dbmanager.callProcedure('notification','call GetCriticalAlert(?)', user_id)
         return render_template('dashboard_doctor.html',
                                doctor=doctor_info, patients=patients,
                                notifications=notifications)

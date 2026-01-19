@@ -35,7 +35,7 @@
             <i class="fas fa-user-circle fa-2x"></i>
             <div>
                 <strong id="patientName">{{ patient.first_name }} {{ patient.last_name }}</strong>
-                <div class="status-indicator status-{% if patient.latest_reading_risk_label == 'Critical' %}critical{% elif patient.latest_reading_risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %}" id="currentStatusBadge">{{ patient.latest_reading_risk_label }}</div>
+                <div class="status-indicator status-{% if patient.latest_reading_risk_label == 'Critical' %}critical{% elif patient.latest_reading_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}" id="currentStatusBadge">{{ patient.latest_reading_risk_label }}</div>
             </div>
         </div>
         <a class="logout-btn" href="/logout">
@@ -55,12 +55,12 @@
                 <i class="fas fa-heartbeat card-icon"></i>
             </div>
             <div class="text-center">
-                <div class="asymmetry-percentage percentage-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %}" id="currentAsymmetry">
+                <div class="asymmetry-percentage percentage-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}" id="currentAsymmetry">
                     {{ (patient.latest_reading_asymmetry_index*100) | round(4) }}%
                 </div>
                 <p>Asymmetry Percentage</p>
-                <div class="status-indicator status-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %} mt-10" id="statusIndicator">
-                    {% if patient.avg_risk_label == 'Critical' %}Critical (> 20%){% elif patient.avg_risk_label == 'Borderline ' %}Borderline (15%-20%){% else %}Normal (< 15%){% endif %}
+                <div class="status-indicator status-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %} mt-10" id="statusIndicator">
+                    {% if patient.avg_risk_label == 'Critical' %}Critical (> 20%){% elif patient.avg_risk_label == 'Borderline' %}Borderline (15%-20%){% else %}Normal (< 15%){% endif %}
                 </div>
             </div>
             <div class="mt-20">
@@ -148,7 +148,7 @@
                     <td>{{ (reading.left_sensory_score) | round(4) }}</td>
                     <td>{{ (reading.right_sensory_score) | round(4) }}</td>
                     <td><strong>{{ (reading.asymmetry_index*100) | round(4) }}</strong></td>
-                    <td><span class="table-badge status-{% if reading.risk_label == 'Critical' %}critical{% elif reading.risk_label == 'Borderline ' %}borderline{% else %}normal{% endif %}">
+                    <td><span class="table-badge status-{% if reading.risk_label == 'Critical' %}critical{% elif reading.risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}">
                         {{ reading.risk_label }}
                     </span></td>
                 </tr>

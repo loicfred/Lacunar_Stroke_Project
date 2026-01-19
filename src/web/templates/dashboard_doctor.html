@@ -7,6 +7,16 @@
     <link rel="stylesheet" href="../static/comstyle.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .bottomBox {
+            display: flex;
+        }
+        @media (max-width: 768px) {
+            .bottomBox {
+                display: block;
+            }
+        }
+    </style>
 </head>
 <body>
 <!-- Header -->
@@ -35,7 +45,7 @@
 
 <!-- Main Dashboard -->
 <div class="container">
-    <div class="dashboard-container">
+    <div class="dashboard-container" style="display: block;">
         <!-- Quick Stats -->
         <div class="card" id="quick-stats">
             <div class="card-header">
@@ -67,50 +77,90 @@
         </div>
 
         <!-- Patient List -->
-        <div class="card" id="patient-list">
-            <div class="card-header">
-                <h2 class="card-title">Patient List</h2>
-                <i class="fas fa-list card-icon"></i>
-            </div>
-            <table class="data-table">
-                <thead>
-                <tr>
-                    <th>Patient</th>
-                    <th>Age</th>
-                    <th>Condition</th>
-                    <th>Last Reading</th>
-                    <th>Asymmetry</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody id="patientsTable">
-                <!-- Patient data loaded by JavaScript -->
-                </tbody>
-            </table>
-            <div class="mt-10">
-                <button class="btn btn-export" onclick="exportAllData()">
-                    <i class="fas fa-download"></i> Export All Data
-                </button>
-                <button class="btn btn-view" onclick="refreshPatients()" style="float: right;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
-        </div>
+        <div class="bottomBox mt-10" style="gap: 15px">
+            <div class="card" id="patient-list">
+                <div class="card-header">
+                    <h2 class="card-title">Patient List</h2>
+                    <i class="fas fa-list card-icon"></i>
+                </div>
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Age</th>
+                        <th>Last Reading</th>
+                        <th>Asymmetry</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="patientsTable">
+                    <!-- Patient data loaded by JavaScript -->
 
-        <!-- Critical Alerts Panel -->
-        <div class="card" id="critical-alerts">
-            <div class="card-header">
-                <h2 class="card-title">Critical Alerts</h2>
-                <i class="fas fa-exclamation-circle card-icon"></i>
+                    {% for patient in patients %}
+                    <tr>
+                        <td><strong>{{patient.first_name}} {{patient.last_name}}</strong></td>
+                        <td>{{patient.age_group}}</td>
+                        <td>{{patient.latest_reading_timestamp}}</td>
+                        <td>{{(patient.latest_reading_asymmetry_index*100) | round(2)}}</td>
+
+                        <td><span class="table-badge status-{% if patient.latest_reading_risk_label == 'Critical' %}critical{% elif patient.latest_reading_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}">{{patient.latest_reading_risk_label}}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a class="btn btn-view" href="/dashboard/patient/{{patient.id}}">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <button class="btn btn-export" onclick="exportSinglePatient({{patient.id}})">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <div class="mt-10">
+                    <button class="btn btn-export" onclick="exportAllData()">
+                        <i class="fas fa-download"></i> Export All Data
+                    </button>
+                    <button class="btn btn-view" onclick="refreshPatients()" style="float: right;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
             </div>
-            <div id="alertsPanel">
-                <!-- Alerts loaded by JavaScript -->
-            </div>
-            <div class="text-center mt-10">
-                <button class="btn btn-view" onclick="viewExceptionReport()">
-                    Generate Exception Report
-                </button>
+
+            <!-- Critical Alerts Panel -->
+            <div class="card" id="critical-alerts">
+                <div class="card-header">
+                    <h2 class="card-title">Critical Alerts</h2>
+                    <i class="fas fa-exclamation-circle card-icon"></i>
+                </div>
+                <div id="alertsPanel">
+                    <!-- Alerts loaded by JavaScript -->
+
+                    {% for notif in notifications %}
+                    <div class="alert-item critical pulse-alert">
+                        <div>
+                            <strong>{{notif.first_name}} {{notif.last_name}} | {{notif.title}}</strong>
+                            <div>{{notif.message}}</div>
+                            <div class="alert-time">Time: {{notif.timestamp}}</div>
+                        </div>
+                        <div class="ms-20">
+                            <a class="btn btn-view" href="/dashboard/patient/{{notif.patient_id}}">
+                                View Details
+                            </a>
+<!--                            ${!alert.reviewed ? `<button class="btn" onclick="markAsReviewed(this, '${alert.patient}')" style="background: #6C757D; color: white; margin-left: 5px;">-->
+<!--                            Mark Reviewed-->
+<!--                        </button>` : ''}-->
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="text-center mt-10">
+                    <button class="btn btn-view" onclick="viewExceptionReport()">
+                        Generate Exception Report
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -217,8 +267,8 @@
 
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
-        loadDoctorData();
-        setupEventListeners();
+        //loadDoctorData();
+        //setupEventListeners();
     });
 
     // Load doctor dashboard data

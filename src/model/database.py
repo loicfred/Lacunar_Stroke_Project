@@ -38,10 +38,10 @@ def callProcedure(table_name, statement, *value):
     try:
         cursor = conn.cursor(dictionary=True)
         cursor.execute(f"{statement.lower()}", value)
-        row = cursor.fetchone()
-        if not row: return None
+        rows = cursor.fetchall()
+        if not rows: return None
         entity_class = ENTITY_REGISTRY[table_name.lower()]
-        return entity_class(**row)
+        return [entity_class(**row) for row in rows]
     finally:
         conn.close()
 
