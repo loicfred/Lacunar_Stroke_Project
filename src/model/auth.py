@@ -18,19 +18,19 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/register', methods=['POST'])
 def register():
     """Handle user registration"""
-    data = request.form
-
-    email = data.get('email')
-    password = data.get('password')
-    role = data.get('role', 'PATIENT')
-
-    if not email or not password:
-        return jsonify({'success': False, 'message': 'Email and password are required'}), 400
-
-    if role not in ['PATIENT', 'DOCTOR']:
-        return jsonify({'success': False, 'message': 'Invalid role'}), 400
-
     try:
+        data = request.form
+
+        email = data.get('email')
+        password = data.get('password')
+        role = data.get('role', 'PATIENT')
+
+        if not email or not password:
+            return jsonify({'success': False, 'message': 'Email and password are required'}), 400
+
+        if role not in ['PATIENT', 'DOCTOR']:
+            return jsonify({'success': False, 'message': 'Invalid role'}), 400
+
         # Check if user already exists
         if dbmanager.getWhere('user', 'email = ?', email):
             return jsonify({'success': False, 'message': 'Email already registered'}), 400
@@ -61,15 +61,15 @@ def register():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """Handle user login"""
-    data = request.form
-
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return jsonify({'success': False, 'message': 'Email and password are required'}), 400
-
     try:
+        data = request.form
+
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({'success': False, 'message': 'Email and password are required'}), 400
+
         # Get user
         user = dbmanager.getWhere('user', 'email = ?', email)
 

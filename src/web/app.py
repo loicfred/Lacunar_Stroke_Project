@@ -513,7 +513,7 @@ def default_dashboard():
 
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
-    if 'user_id' not in session or session['role'] != 'DOCTOR' and patient_id != session['user_id']:
+    if 'user_id' not in session or (session['role'] != 'DOCTOR' and patient_id != session['user_id']):
         return redirect('/login')
     try:
         patient_info = dbmanager.getByID('exception_report', patient_id)
