@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, session
-from database import get_connection  # Direct import since database.py is in same directory
-from src.model.Notification import Notification
+from src.model.database import get_connection  # Direct import since database.py is in same directory
+from src.model.db.Notification import Notification
 import json
 
 notifications_bp = Blueprint('notifications', __name__)

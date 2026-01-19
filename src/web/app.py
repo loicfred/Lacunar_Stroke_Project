@@ -4,7 +4,6 @@ Green: This is the foundation. Other members add to marked sections.
 """
 import logging
 import time
-from math import trunc
 
 import model.database as dbmanager
 from model.sample.PatientDetails import PatientDetails
