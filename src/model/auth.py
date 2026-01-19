@@ -77,10 +77,10 @@ def login():
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Check password
-        if 'password' not in user:
+        if not user.password:
             return jsonify({'success': False, 'message': 'User record has no password field'}), 500
 
-        if not check_password_hash(user['password'], password):
+        if not check_password_hash(user.password, password):
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Set session data
