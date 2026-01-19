@@ -45,7 +45,7 @@ def register():
 
         # If registering as patient, create patient_info entry
         if role == 'PATIENT':
-            patient = Patient_Info(id=user_id, first_name=first_name, last_name=last_name, age_group=age_group, sex=sex, email=email, password=password)
+            patient = Patient_Info(id=user_id, first_name=first_name, last_name=last_name, age_group=age_group, sex=sex)
             patient.id = user_id
             dbmanager.insert('patient_info', patient)
         ## do as doctor after
