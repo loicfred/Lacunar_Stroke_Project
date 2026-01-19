@@ -12,6 +12,8 @@ from model.sample.PatientDetails import PatientDetails
 logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, render_template, jsonify, request, redirect, session
+from auth import auth_bp  # Import auth blueprint
+from notifications import notifications_bp  # Import notifications blueprint
 import data_simulation.patient_generator as patient_gen
 import random
 import sys
@@ -28,7 +30,11 @@ sys.path.insert(0, parent_dir)
 
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SESSION_SECRET', 'your-secret-key-here-change-in-production'
 
+# Register blueprints
+app.register_blueprint(auth_bp)
+app.register_blueprint(notifications_bp)
 
 # ========== LOAD STROKE MODEL ==========
 print("=" * 50)
@@ -437,24 +443,31 @@ def api_model_test():
 def home():
     return render_template('index.html', model_loaded=model is not None)
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/login.html')
-
+# Replace your current login/register routes with:
 @app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'GET':
-        return render_template('login.html')
-    return None
-    # Handle POST request for login
+def login_page():
+    """Handle login page - auth logic is in auth.py"""
+    if 'user_id' in session:
+        # Redirect to appropriate dashboard if already logged in
+        if session.get('role') == 'doctor':
+            return redirect('/dashboard/doctor')
+        else:
+            return redirect('/dashboard/patient')
+    return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'GET':
-        return render_template('register.html')
-    return None
-    # Handle POST request for registration
+def register_page():
+    """Handle register page - auth logic is in auth.py"""
+    if 'user_id' in session:
+        # Redirect if already logged in
+        return redirect('/')
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    """Handle logout"""
+    session.clear()
+    return redirect('/')
 
 @app.route('/dataset') # Page to upload a dataset to view
 def upload_dataset():
@@ -463,6 +476,63 @@ def upload_dataset():
 @app.route('/result')
 def result():
     return render_template('result.html',model_loaded=model is not None)
+
+# Add these dashboard routes:
+@app.route('/dashboard/doctor')
+def doctor_dashboard():
+    """Doctor dashboard"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return redirect('/login')
+
+    # Get doctor's info and patients
+    try:
+        from database import getByID, getAllWhere
+        user_id = session['user_id']
+        doctor_info = getByID('doctor_info', user_id) if getByID('doctor_info', user_id) else None
+
+        # Get all patients for doctor view
+        patients = getAllWhere('patient_info', '1=1')[:10]  # First 10 patients
+
+        # Get notifications
+        notifications = getAllWhere('notification', '1=1 ORDER BY timestamp DESC')[:5]
+
+        return render_template('dashboard_doctor.html',
+                               doctor=doctor_info,
+                               patients=patients,
+                               notifications=notifications,
+                               user_email=session.get('email'))
+    except Exception as e:
+        print(f"Dashboard error: {e}")
+        return render_template('dashboard_doctor.html', error=str(e))
+
+@app.route('/dashboard/patient')
+def patient_dashboard():
+    """Patient dashboard"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return redirect('/login')
+
+    try:
+        from database import getByID, getAllWhere
+        user_id = session['user_id']
+
+        # Get patient info
+        patient_info = getByID('patient_info', user_id)
+
+        # Get patient's readings
+        readings = getAllWhere('reading', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:10]
+
+        # Get patient's notifications
+        notifications = getAllWhere('notification', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:5]
+
+        return render_template('dashboard_patient.html',
+                               patient=patient_info,
+                               readings=readings,
+                               notifications=notifications,
+                               user_email=session.get('email'),
+                               patient_name=session.get('patient_name', 'Patient'))
+    except Exception as e:
+        print(f"Patient dashboard error: {e}")
+        return render_template('dashboard_patient.html', error=str(e))
 
 @app.route('/dashboard-doctor/<string:patient_id>')
 def dashboard_doctor(patient_id):
