@@ -482,18 +482,11 @@ def doctor_dashboard():
     """Doctor dashboard"""
     if 'user_id' not in session or session.get('role') != 'doctor':
         return redirect('/login')
-
-    # Get doctor's info and patients
     try:
         user_id = session['user_id']
         doctor_info = dbmanager.getByID('doctor_info', user_id) if dbmanager.getByID('doctor_info', user_id) else None
-
-        # Get all patients for doctor view
-        patients = dbmanager.getAllWhere('patient_info', '1=1')[:10]  # First 10 patients
-
-        # Get notifications
+        patients = dbmanager.getAllWhere('patient_info', 'doctor_id = ?', user_id)[:10]  # First 10 patients
         notifications = dbmanager.getAllWhere('notification', '1=1 ORDER BY timestamp DESC')[:5]
-
         return render_template('dashboard_doctor.html',
                                doctor=doctor_info,
                                patients=patients,
@@ -502,40 +495,6 @@ def doctor_dashboard():
     except Exception as e:
         print(f"Dashboard error: {e}")
         return render_template('dashboard_doctor.html', error=str(e))
-
-@app.route('/dashboard/patient')
-def patient_dashboard():
-    """Patient dashboard"""
-    if 'user_id' not in session or session.get('role') != 'patient':
-        return redirect('/login')
-
-    try:
-        user_id = session['user_id']
-
-        # Get patient info
-        patient_info = dbmanager.getByID('patient_info', user_id)
-
-        # Get patient's readings
-        readings = dbmanager.getAllWhere('reading', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:10]
-
-        # Get patient's notifications
-        notifications = dbmanager.getAllWhere('notification', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:5]
-
-        return render_template('dashboard_patient.html',
-                               patient=patient_info,
-                               readings=readings,
-                               notifications=notifications,
-                               user_email=session.get('email'),
-                               patient_name=session.get('patient_name', 'Patient'))
-    except Exception as e:
-        print(f"Patient dashboard error: {e}")
-        return render_template('dashboard_patient.html', error=str(e))
-
-@app.route('/dashboard-doctor/<string:patient_id>')
-def dashboard_doctor(patient_id):
-    patient_info = dbmanager.getByID('exception_report', patient_id)
-    readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
-    return render_template('dashboard_doctor.html',patient=patient_info,readings=readings,model_loaded=model is not None)
 
 @app.route('/dashboard-patient/<string:patient_id>')
 def dashboard_patient(patient_id):
