@@ -21,6 +21,10 @@ def register():
     try:
         data = request.form
 
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        sex = data.get('sex')
+        age_group = data.get('age_group')
         email = data.get('email')
         password = data.get('password')
         role = data.get('role', 'PATIENT')
@@ -41,7 +45,7 @@ def register():
 
         # If registering as patient, create patient_info entry
         if role == 'PATIENT':
-            patient = Patient_Info(id=user_id, first_name='', last_name='')
+            patient = Patient_Info(id=user_id, first_name=first_name, last_name=last_name, age_group=age_group, sex=sex, email=email, password=password)
             patient.id = user_id
             dbmanager.insert('patient_info', patient)
         ## do as doctor after
@@ -63,6 +67,7 @@ def login():
     """Handle user login"""
     try:
         data = request.form
+
 
         email = data.get('email')
         password = data.get('password')
