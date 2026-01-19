@@ -8,3 +8,4 @@ class Patient_Info:
         self.smoking_history = kwargs.get("smoking_history")
         self.first_name = kwargs.get("first_name")
         self.last_name = kwargs.get("last_name")
+        self.doctor_id = kwargs.get("doctor_id")

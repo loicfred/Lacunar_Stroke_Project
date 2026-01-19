@@ -4,6 +4,9 @@ import os
 import pandas as pd
 
 from datetime import datetime, timedelta
+
+from model.db.Detailed_Reading import Detailed_Reading
+from model.db.Doctor_Info import Doctor_Info
 from model.db.User import User
 from model.db.Patient_Report import Patient_Report
 from model.db.Notification import Notification
@@ -21,8 +24,10 @@ def get_connection():
 
 ENTITY_REGISTRY = {
     "user": User,
-    "patient": Patient_Info,
+    "patient_info": Patient_Info,
+    "doctor_info": Doctor_Info,
     "reading": Reading,
+    "detailed_reading": Detailed_Reading,
     "patient_report": Patient_Report,
     "exception_report": Patient_Report,
     "notification": Notification
