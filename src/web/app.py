@@ -471,16 +471,15 @@ def logout():
 @app.route('/dashboard/doctor')
 def doctor_dashboard():
     """Doctor dashboard"""
-    if 'user_id' not in session or session['role']!= 'DOCTOR':
-        return redirect('/login')
     try:
+        if 'user_id' not in session or session['role'] != 'DOCTOR':
+            return redirect('/login')
         user_id = session['user_id']
         doctor_info = dbmanager.getByID('doctor_info', user_id) if dbmanager.getByID('doctor_info', user_id) else None
         patients = dbmanager.getAllWhere('patient_info', 'doctor_id = ?', user_id)[:10]  # First 10 patients
         notifications = dbmanager.getAllWhere('notification', '1=1 ORDER BY timestamp DESC')[:5]
         return render_template('dashboard_doctor.html',
-                               doctor=doctor_info,
-                               patients=patients,
+                               doctor=doctor_info, patients=patients,
                                notifications=notifications)
     except Exception as e:
         print(f"Dashboard error: {e}")
@@ -488,9 +487,9 @@ def doctor_dashboard():
 
 @app.route('/exception-report')
 def exception_report():
-    if 'user_id' not in session or session['role']!= 'DOCTOR':
-        return redirect('/login')
     try:
+        if 'user_id' not in session or session['role'] != 'DOCTOR':
+            return redirect('/login')
         exception_list = dbmanager.getAll('exception_report')
         critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
         borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
@@ -507,15 +506,11 @@ def exception_report():
         return render_template('exception_report.html', error=str(e))
 
 
-@app.route('/dashboard/patient')
-def default_dashboard():
-    return redirect('/login')
-
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
-    if 'user_id' not in session or (session['role'] != 'DOCTOR' and patient_id != session['user_id']):
-        return redirect('/login')
     try:
+        if 'user_id' not in session or (session['role'] != 'DOCTOR' and patient_id != session['user_id']):
+            return redirect('/login')
         patient_info = dbmanager.getByID('exception_report', patient_id)
         readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
         notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
@@ -523,6 +518,10 @@ def dashboard_patient(patient_id):
     except Exception as e:
         print(f"Dashboard error: {e}")
         return render_template('dashboard_patient.html', error=str(e))
+@app.route('/dashboard/patient')
+def default_dashboard():
+    return redirect('/login')
+
 
 
 # ========== MISC CONTROLLER ==========

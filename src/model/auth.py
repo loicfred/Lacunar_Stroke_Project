@@ -89,7 +89,7 @@ def login():
         elif session['role'] == 'DOCTOR':
             doctor_info = dbmanager.getByID('doctor_info', user.id)
             if doctor_info:
-                session['name'] = f"{doctor_info.first_name} {doctor_info.last_name}".strip()
+                session['name'] = f"{doctor_info.title}. {doctor_info.first_name} {doctor_info.last_name}".strip()
 
         # Redirect based on role
         if session['role'] == 'DOCTOR':

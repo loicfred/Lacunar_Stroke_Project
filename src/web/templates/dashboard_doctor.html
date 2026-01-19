@@ -23,13 +23,13 @@
         <div class="user-profile">
             <i class="fas fa-user-md fa-2x"></i>
             <div>
-                <strong>Dr. Sarah Miller</strong>
+                <strong>{{ session.get('name') }}</strong>
                 <div>Neurology Department</div>
             </div>
         </div>
-        <button class="logout-btn" onclick="logout()">
+        <a class="logout-btn" href="/logout">
             <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
+        </a>
     </div>
 </header>
 
