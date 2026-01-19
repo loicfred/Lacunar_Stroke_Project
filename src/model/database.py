@@ -92,17 +92,19 @@ def get_patient_baseline(patient_id):
     from their last 10 readings to establish a 'Normal' baseline.
     """
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    query = """
+    try:
+        cursor = conn.cursor(dictionary=True)
+        query = """
             SELECT AVG(left_sensory_score) as avg_left, AVG(right_sensory_score) as avg_right
             FROM reading
             WHERE patient_id = ?
             ORDER BY timestamp DESC LIMIT 10 
             """
-    cursor.execute(query, (patient_id,))
-    baseline = cursor.fetchone()
-    conn.close()
-    return baseline if baseline['avg_left'] else {"avg_left": 10.0, "avg_right": 10.0}
+        cursor.execute(query, (patient_id,))
+        baseline = cursor.fetchone()
+        return baseline if baseline['avg_left'] else {"avg_left": 10.0, "avg_right": 10.0}
+    finally:
+        conn.close()
 
 
 def get_reading_velocity(patient_id):
@@ -111,32 +113,34 @@ def get_reading_velocity(patient_id):
     Returns: (left_delta, right_delta, hours_passed)
     """
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    # Get the two most recent readings
-    query = """
+    try:
+        cursor = conn.cursor(dictionary=True)
+        # Get the two most recent readings
+        query = """
             SELECT left_sensory_score, right_sensory_score, timestamp
             FROM reading
             WHERE patient_id = ?
             ORDER BY timestamp DESC LIMIT 2 \
             """
-    cursor.execute(query, (patient_id,))
-    rows = cursor.fetchall()
-    conn.close()
+        cursor.execute(query, (patient_id,))
+        rows = cursor.fetchall()
 
-    if len(rows) < 2:
-        return 0.0, 0.0, 0.0 # Not enough history to calculate velocity
+        if len(rows) < 2:
+            return 0.0, 0.0, 0.0 # Not enough history to calculate velocity
 
-    current, previous = rows[0], rows[1]
+        current, previous = rows[0], rows[1]
 
-    # Calculate time difference in hours
-    time_diff = (current['timestamp'] - previous['timestamp']).total_seconds() / 3600
-    if time_diff == 0: time_diff = 0.01 # Avoid division by zero
+        # Calculate time difference in hours
+        time_diff = (current['timestamp'] - previous['timestamp']).total_seconds() / 3600
+        if time_diff == 0: time_diff = 0.01 # Avoid division by zero
 
-    # Calculate rate of change per hour
-    left_velocity = (current['left_sensory_score'] - previous['left_sensory_score']) / time_diff
-    right_velocity = (current['right_sensory_score'] - previous['right_sensory_score']) / time_diff
+        # Calculate rate of change per hour
+        left_velocity = (current['left_sensory_score'] - previous['left_sensory_score']) / time_diff
+        right_velocity = (current['right_sensory_score'] - previous['right_sensory_score']) / time_diff
 
-    return round(left_velocity, 3), round(right_velocity, 3), round(time_diff, 2)
+        return round(left_velocity, 3), round(right_velocity, 3), round(time_diff, 2)
+    finally:
+        conn.close()
 
 
 def generate_sample_data():
