@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Dashboard - Lacunar Stroke Predictor</title>
-    <link rel="stylesheet" href="../static/comstyle.css">
+    <link rel="stylesheet" href="../../static/comstyle.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -31,7 +31,7 @@
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
-    <script src="../static/charts.js"></script>
+    <script src="../../static/charts.js"></script>
 </header>
 
 <!-- Main Dashboard -->
@@ -176,6 +176,16 @@
             </div>
         </div>
     </div>
+
+    {% if session.get('role') == 'DOCTOR' %}
+    <form class="notes-section" action="/api/patient/{{patient.id}}/note" method="POST">
+        <h3>Doctor's Notes</h3>
+        <textarea class="notes-input" name="notes" id="doctorNotes" placeholder="Add your notes here...">{{ patient.notes }}</textarea>
+        <button class="btn btn-view" type="submit">
+            <i class="fas fa-save"></i> Save Notes
+        </button>
+    </form>
+    {% endif %}
 </div>
 
 <!-- Notification Modal -->

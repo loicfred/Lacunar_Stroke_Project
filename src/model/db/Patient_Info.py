@@ -9,3 +9,4 @@ class Patient_Info:
         self.first_name = kwargs.get("first_name")
         self.last_name = kwargs.get("last_name")
         self.doctor_id = kwargs.get("doctor_id")
+        self.notes = kwargs.get("notes")
