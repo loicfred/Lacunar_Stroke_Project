@@ -5,7 +5,7 @@ import pandas as pd
 
 from datetime import datetime, timedelta
 from model.db.User import User
-from model.db.Detailed_Report import Detailed_Report
+from model.db.Patient_Report import Patient_Report
 from model.db.Notification import Notification
 from model.db.Patient_Info import Patient_Info
 from model.db.Reading import Reading
@@ -23,9 +23,20 @@ ENTITY_REGISTRY = {
     "user": User,
     "patient": Patient_Info,
     "reading": Reading,
-    "detailed_report": Detailed_Report,
+    "patient_report": Patient_Report,
+    "exception_report": Patient_Report,
     "notification": Notification
 }
+
+def callProcedure(table_name, statement, *value):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(f"{statement.lower()}", value)
+    row = cursor.fetchone()
+    if not row: return None
+    entity_class = ENTITY_REGISTRY[table_name.lower()]
+    conn.close()
+    return entity_class(**row)
 
 def getByID(table_name, entity_id):
     conn = get_connection()
@@ -41,6 +52,16 @@ def getAll(table_name):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(f"SELECT * FROM {table_name.lower()}")
+    rows = cursor.fetchall()
+    if not rows: return []
+    entity_class = ENTITY_REGISTRY[table_name.lower()]
+    conn.close()
+    return [entity_class(**row) for row in rows]
+
+def getAllWhere(table_name, condition, *value):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(f"SELECT * FROM {table_name.lower()} WHERE {condition}", value)
     rows = cursor.fetchall()
     if not rows: return []
     entity_class = ENTITY_REGISTRY[table_name.lower()]
@@ -199,4 +220,3 @@ def toCSV(itemlist, filename):
     master_df.to_csv(os.path.join("output", filename + ".csv"), index=False)
 
 
-generate_sample_data()

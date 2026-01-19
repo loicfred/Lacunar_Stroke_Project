@@ -4,8 +4,9 @@ Green: This is the foundation. Other members add to marked sections.
 """
 import logging
 import time
+from math import trunc
 
-from model.database import get_reading_velocity
+import model.database as dbmanager
 from model.sample.PatientDetails import PatientDetails
 
 logging.basicConfig(level=logging.INFO)
@@ -85,7 +86,7 @@ def predict_with_model(patient_data):
         asymmetry_index = abs(left - right) / avg if avg > 0 else 0
 
         #Fetch Velocity from Database
-        l_vel, r_vel, t_delta = get_reading_velocity(patient_data.get("id", 0))
+        l_vel, r_vel, t_delta = dbmanager.get_reading_velocity(patient_data.get("id", 0))
         score_velocity = min(l_vel, r_vel) # Capture the worst drop
 
         ht = int(patient_data.get("hypertension", 0))
@@ -443,6 +444,36 @@ def upload_dataset():
 @app.route('/result')
 def result():
     return render_template('result.html',model_loaded=model is not None)
+
+@app.route('/dashboard-doctor/<string:patient_id>')
+def dashboard_doctor(patient_id):
+    patient_info = dbmanager.callProcedure('patient_report', 'call lacunar_stroke.patient_report(?)', patient_id)
+    readings = dbmanager.getAllWhere('reading', 'patient_id = ?', patient_id)
+    return render_template('dashboard_doctor.html',patient_info=patient_info.__dict__,readings=jsonify({
+        "readings": [r.__dict__ for r in readings],
+    }),model_loaded=model is not None)
+
+@app.route('/dashboard-patient/<string:patient_id>')
+def dashboard_patient(patient_id):
+    patient_info = dbmanager.callProcedure('patient_report', 'call lacunar_stroke.patient_report(?)', patient_id)
+    readings = dbmanager.getAllWhere('reading', 'patient_id = ?', patient_id)
+    return render_template('dashboard_patient.html',patient_info=patient_info.__dict__,readings=jsonify({
+        "readings": [r.__dict__ for r in readings],
+    }),model_loaded=model is not None)
+
+@app.route('/exception-report')
+def exception_report():
+    exception_list = dbmanager.getAll('exception_report')
+    critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
+    borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
+    normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal')
+    
+    avg_asym = round(sum(exception.highest_reading_asymmetry_index for exception in exception_list) / len(exception_list) * 100, 2)
+
+    filtered_exception_list = [exception for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label in ['Critical', 'Borderline']]
+
+    return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
+                           model_loaded=model is not None)
 
 
 # ========== MISC CONTROLLER ==========
