@@ -1,23 +1,26 @@
-from flask import Blueprint, request, jsonify, session, redirect, url_for
+from flask import Blueprint, request, jsonify, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
+import sys
+import os
 
-# Import from your existing database.py
+# Fix import path - database.py is in src/sample/
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'sample'))
+
 try:
-    from src.model.db.database import get_connection, insert, getAll, getByID
-    print("✅ Successfully imported database functions")
+    from database import get_connection
+    print("✅ Successfully imported database functions from src/sample/")
 except ImportError as e:
     print(f"❌ Import error: {e}")
-    # Fallback to direct connection
+    # Direct connection as fallback
     import mariadb
-    from config import config
 
     def get_connection():
         return mariadb.connect(
-            host=config.DB_HOST,
-            port=config.DB_PORT,
-            user=config.DB_USER,
-            password=config.DB_PASSWORD,
-            database=config.DB_NAME
+            user="Lacunar",
+            password="LacunarStroke1234",
+            host="54.37.40.206",
+            port=3306,
+            database="lacunar_stroke"
         )
 
 # Create Blueprint for authentication
@@ -25,7 +28,7 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Handle user registration using existing database.py"""
+    """Handle user registration"""
     data = request.form
 
     email = data.get('email')
@@ -35,42 +38,43 @@ def register():
     if not email or not password:
         return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
-    if role not in ['patient', 'doctor', 'admin']:
+    if role not in ['patient', 'doctor']:
         return jsonify({'success': False, 'message': 'Invalid role'}), 400
 
     try:
         # Check if user already exists
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute('SELECT id FROM user WHERE email = ?', (email,))
+        cursor.execute('SELECT id FROM user WHERE email = %s', (email,))
         existing_user = cursor.fetchone()
-        cursor.close()
-        conn.close()
 
         if existing_user:
+            cursor.close()
+            conn.close()
             return jsonify({'success': False, 'message': 'Email already registered'}), 400
 
-        # Create user using User model
+        # Hash password
         hashed_password = generate_password_hash(password)
-        user = User(email=email, password=hashed_password, role=role)
 
-        # Insert using existing database.py function
-        user_id = insert("user", user)
+        # Insert user
+        cursor.execute(
+            'INSERT INTO user (email, password, role) VALUES (%s, %s, %s)',
+            (email, hashed_password, role)
+        )
 
-        # If patient, create patient_info entry
+        user_id = cursor.lastrowid
+
+        # If registering as patient, create patient_info entry
         if role == 'patient':
-            from src.model.Patient_Info import Patient_Info
-            patient = Patient_Info(
-                id=user_id,
-                first_name='',
-                last_name='',
-                age_group='',
-                sex='',
-                hypertension=0,
-                diabetes=0,
-                smoking_history=0
+            cursor.execute(
+                '''INSERT INTO patient_info (id, first_name, last_name)
+                   VALUES (%s, %s, %s)''',
+                (user_id, '', '')
             )
-            insert("patient_info", patient)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
 
         return jsonify({
             'success': True,
@@ -79,11 +83,13 @@ def register():
         }), 201
 
     except Exception as e:
+        import traceback
+        print(f"Registration error: {traceback.format_exc()}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """Handle user login using existing database.py"""
+    """Handle user login"""
     data = request.form
 
     email = data.get('email')
@@ -93,70 +99,64 @@ def login():
         return jsonify({'success': False, 'message': 'Email and password are required'}), 400
 
     try:
-        # Get user using database connection
+        # Get user
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute('SELECT * FROM user WHERE email = ?', (email,))
+        cursor.execute('SELECT * FROM user WHERE email = %s', (email,))
         user = cursor.fetchone()
-        cursor.close()
-        conn.close()
 
         if not user:
+            cursor.close()
+            conn.close()
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Check password
+        if 'password' not in user:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'User record has no password field'}), 500
+
         if not check_password_hash(user['password'], password):
+            cursor.close()
+            conn.close()
             return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
 
         # Set session data
         session['user_id'] = user['id']
         session['email'] = user['email']
-        session['role'] = user['role']
+        session['role'] = user.get('role', 'patient')
 
         # Get patient info if role is patient
-        if user['role'] == 'patient':
-            conn = get_connection()
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute('SELECT * FROM patient_info WHERE id = ?', (user['id'],))
+        if session['role'] == 'patient':
+            cursor.execute('SELECT * FROM patient_info WHERE id = %s', (user['id'],))
             patient_info = cursor.fetchone()
-            cursor.close()
-            conn.close()
 
             if patient_info:
                 session['patient_name'] = f"{patient_info.get('first_name', '')} {patient_info.get('last_name', '')}".strip()
 
+        cursor.close()
+        conn.close()
+
         # Redirect based on role
-        if user['role'] in ['admin', 'doctor']:
+        if session['role'] == 'doctor':
             redirect_url = '/dashboard/doctor'
-        else:  # patient
+        else:
             redirect_url = '/dashboard/patient'
 
         return jsonify({
             'success': True,
             'message': 'Login successful',
             'redirect': redirect_url,
-            'role': user['role']
+            'role': session['role']
         })
 
     except Exception as e:
+        import traceback
+        print(f"Login error: {traceback.format_exc()}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
 @auth_bp.route('/logout')
 def logout():
     """Handle user logout"""
     session.clear()
-    return redirect(url_for('index'))
-
-@auth_bp.route('/api/current-user')
-def get_current_user():
-    """Get current user info"""
-    if 'user_id' not in session:
-        return jsonify({'authenticated': False}), 401
-
-    return jsonify({
-        'authenticated': True,
-        'user_id': session['user_id'],
-        'email': session['email'],
-        'role': session['role'],
-        'patient_name': session.get('patient_name', '')
-    })
+    return redirect('/')
