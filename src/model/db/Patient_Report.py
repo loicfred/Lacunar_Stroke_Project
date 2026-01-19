@@ -42,3 +42,4 @@ class Patient_Report:
         self.doctor_title = kwargs.get("doctor_title")
         self.doctor_qualification = kwargs.get("doctor_qualification")
         self.doctor_profession = kwargs.get("doctor_profession")
+        self.notes = kwargs.get("notes")
