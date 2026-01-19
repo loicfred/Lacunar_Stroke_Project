@@ -82,6 +82,15 @@
         .error-message.show {
             display: block;
         }
+
+        form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -93,7 +102,10 @@
     <div id="errorMessage" class="error-message"></div>
 
     <form id="loginForm" action="/login" method="post">
+        <label>Email Address</label>
         <input type="email" name="email" placeholder="Email Address" required>
+
+        <label>Password</label>
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
     </form>
