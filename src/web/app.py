@@ -518,7 +518,7 @@ def exception_report():
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
     try:
-        if 'user_id' not in session or (session['role'] != 'DOCTOR' and patient_id != session['user_id']):
+        if 'user_id' not in session or (session['role'] != 'DOCTOR' and patient_id != str(session['user_id'])):
             return redirect('/login')
         patient_info = dbmanager.getByID('exception_report', patient_id)
         readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
