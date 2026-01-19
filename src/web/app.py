@@ -5,6 +5,7 @@ Green: This is the foundation. Other members add to marked sections.
 import logging
 import time
 
+from model.database import get_reading_velocity
 from model.sample.PatientDetails import PatientDetails
 
 logging.basicConfig(level=logging.INFO)
@@ -69,76 +70,92 @@ sample_patient_list = []
 # ========== MODEL PREDICTION FUNCTION ==========
 def predict_with_model(patient_data):
     """
-    Use the trained ML model
+    Unified Prediction Logic:
+    - No Cliff-Edge (uses probability-weighted labels)
+    - Side Detection
+    - Bilateral Consideration
     """
-    if model is None:
-        return None
+    if model is None: return None
 
     try:
-        # 1. Extract features
-        left_score = patient_data.get("left_sensory_score", 5.0)
-        right_score = patient_data.get("right_sensory_score", 5.0)
-        avg_score = (left_score + right_score) / 2
+        # 1. Prepare Features
+        left = float(patient_data.get("left_sensory_score"))
+        right = float(patient_data.get("right_sensory_score"))
+        avg = (left + right) / 2
+        asymmetry_index = abs(left - right) / avg if avg > 0 else 0
 
-        # 2. Calculate asymmetry
-        if avg_score > 0:
-            asymmetry_index = abs(left_score - right_score) / avg_score
+        #Fetch Velocity from Database
+        l_vel, r_vel, t_delta = get_reading_velocity(patient_data.get("id", 0))
+        score_velocity = min(l_vel, r_vel) # Capture the worst drop
+
+        ht = int(patient_data.get("hypertension", 0))
+        db = int(patient_data.get("diabetes", 0))
+        sm = int(patient_data.get("smoking", 0))
+
+        input_data = pd.DataFrame([[
+            left, right, asymmetry_index,
+            int(patient_data.get("hypertension", 0)),
+            int(patient_data.get("diabetes", 0)),
+            int(patient_data.get("smoking", 0)),
+            score_velocity
+        ]], columns=['left_sensory_score', 'right_sensory_score', 'asymmetry_index',
+                     'hypertension', 'diabetes', 'smoking_history', 'score_velocity'])
+
+        # 2. Get Prediction and Probabilities (To avoid cliff-edges)
+        prediction_code = int(model.predict(input_data)[0])
+        probs = model.predict_proba(input_data)[0]
+        confidence = max(probs)
+
+        # 3. Determine Affected Side & Bilateral Risk
+        # Even if model says unilateral, if both scores are low, it's Bilateral
+        if left < 6.0 and right < 6.0:
+            affected_side = "Bilateral (Both Sides)"
+            # Smooth transition to Bilateral if both are low
+            if prediction_code != 4 and confidence < 0.7:
+                prediction_code = 4
+        elif left < right - 0.5:
+            affected_side = "Left"
+        elif right < left - 0.5:
+            affected_side = "Right"
         else:
-            asymmetry_index = 0
+            affected_side = "None"
 
-        # 3. Model Prediction
-        input_data = pd.DataFrame([[left_score, right_score, asymmetry_index]],
-                                  columns=['left_sensory_score', 'right_sensory_score', 'asymmetry_index'])
-        prediction = int(model.predict(input_data)[0])
+        if score_velocity < -1.0:
+            prediction_code = 4
 
-        # 4. Initial Mapping
-        risk_labels = {
-            0: ("Strong Response", "low", "🟢", "Normal (Healthy)"),
-            1: ("Slightly Reduced", "medium", "🟡", "Unilateral Risk (Asymmetric)"),
-            2: ("Moderately Reduced", "medium", "🟠", "Unilateral Risk (Asymmetric)"),
-            3: ("Significantly Reduced", "high", "🔴", "Unilateral Risk (Asymmetric)"),
-            4: ("Weak Global Response", "critical", "🟣", "Bilateral Risk (Both Sides Low)")
+        # 4. Clinical Label Mapping (Based on your IMPACT_LEVELS)
+        impact_labels = {
+            0: {"label": "Strong Response", "level": "low", "emoji": "🟢"},
+            1: {"label": "Slightly Reduced", "level": "medium", "emoji": "🟡"},
+            2: {"label": "Moderately Reduced", "level": "medium", "emoji": "🟠"},
+            3: {"label": "Significantly Reduced", "level": "high", "emoji": "🔴"},
+            4: {"label": "Weak Global Response", "level": "critical", "emoji": "🟣"}
         }
 
-        label, risk_level, emoji, category = risk_labels.get(prediction, ("Unknown", "unknown", "⚪", "unknown"))
+        res = impact_labels.get(prediction_code)
 
-        # If the model flags Bilateral Risk (4), but scores are actually decent (> 6.0)
-        if prediction == 4:
-            if avg_score >= 6.5:
-                # Downgrade to "Normal/Borderline"
-                label, risk_level, emoji, category = ("Normal", "low", "🟢", "Bilateral (High Scores)")
-            elif avg_score >= 5.0:
-                # Downgrade to "Medium"
-                label, risk_level, emoji, category = ("Mild Bilateral Reduction", "medium", "🟠", "Bilateral Risk")
-        # ============================================================
-
-        # Determine side
-        affected_side = "None"
-        if prediction in [1, 2, 3]:
-            affected_side = "Left" if left_score < right_score else "Right"
-        elif prediction == 4:
-            affected_side = "Both (Systemic)"
-
-        model_confidence = 0.85
-        if hasattr(model, 'predict_proba'):
-            model_confidence = max(model.predict_proba(input_data)[0])
+        # 5. Cliff-Edge Smoothing:
+        # If confidence is low, we soften the label to "Borderline"
+        # so the user isn't startled by a sudden change.
+        display_label = res["label"]
+        if confidence < 0.55:
+            display_label = f"Borderline {display_label}"
 
         return {
-            "prediction_code": prediction,
-            "prediction_label": label,
-            "risk_level": risk_level,
-            "state_emoji": emoji,
-            "model_confidence": round(model_confidence, 3),
+            "prediction_code": prediction_code,
+            "sensory_response": display_label,
+            "risk_level": res["level"],
+            "state_emoji": res["emoji"],
             "affected_side": affected_side,
-            "clinical_category": category,
+            "model_confidence": round(confidence, 2),
             "asymmetry_index": round(asymmetry_index, 3),
-            "model_used": "trained_ml_model",
-            "model_type": type(model).__name__
+            "is_bilateral": prediction_code == 4 or affected_side == "Bilateral (Both Sides)"
         }
 
     except Exception as e:
-        print(f"Model prediction error: {e}")
+        print(f"❌ Model prediction error: {e}")
         return None
+
 
 # ========== FALLBACK PREDICTION (Existing Logic) ==========
 def predict_stroke_threshold(patient_data):
@@ -227,8 +244,7 @@ def add_sample_patients(amount: int = 1):
     new_patients_list = []
     for i in range(amount):
         patient_detail = patient_gen.generate_single_patient_details(random.randint(100, 999))
-        # This uses your CASE 1/2/3 logic correctly:
-        sensory_detail = patient_gen.generate_single_sensory_details()
+        sensory_detail = patient_gen.generate_single_sensory_details(patient_detail)
 
         new_patient = Patient.create(patient_detail, sensory_detail)
         new_patients_list.append(new_patient)
@@ -257,40 +273,93 @@ def api_add_sample_patients(amount):
 @app.route('/api/predict', methods=['POST']) # Send patient's data to return a prediction.
 def api_predict_stroke():
     try:
-        if not request.values: # Get request body as JSON
+        # 1. Check for incoming data
+        if not request.values:
             return jsonify({
                 "success": False,
                 "error": "No patient data provided"
             }), 400
 
-        new_patient = PatientDetails(int(time.time()), request.values["age"], request.values["sex"],
-                                     request.values["hypertension"], request.values["diabetes"], request.values["smoking"])
+        # 2. Reconstruct Patient Details from form/request
+        # We try to get an ID; if it's a new patient, we use a temporary timestamp-based ID
+        patient_id = int(request.values.get("patient_id", int(time.time())))
 
+        new_patient_details = PatientDetails(
+            patient_id,
+            request.values["age"],
+            request.values["sex"],
+            int(request.values["hypertension"]),
+            int(request.values["diabetes"]),
+            int(request.values["smoking"])
+        )
+
+        # 3. Extract Sensory Scores
         left_score = float(request.values["left_asymmetry"])
         right_score = float(request.values["right_asymmetry"])
-        asymmetry = abs(left_score - right_score) > 2.0
-        if asymmetry: affected_side = "Left" if left_score < right_score else "Right"
-        else: affected_side = "None"
-        asymmetry_label = 1 if asymmetry else 0
-        new_sensory = SensoryDetails(left_score, right_score, affected_side, asymmetry_label)
 
-        patient = Patient.create(new_patient, new_sensory)
+        # 4. FETCH BASELINE & VELOCITY: Historical Context from database.py
+        # This allows us to see if the current score is a sudden drop
+        from model.database import get_patient_baseline, get_reading_velocity
+        baseline = get_patient_baseline(patient_id)
+        l_vel, r_vel, t_delta = get_reading_velocity(patient_id)
 
-        prediction = predict_stroke(patient.__dict__)  # Get prediction from model/threshold
+        # Determine the worst velocity (largest drop)
+        current_velocity = min(l_vel, r_vel)
 
-        # Add model status info
+        # 5. Determine Affected Side (Initial Logic)
+        asymmetry_detected = abs(left_score - right_score) > 2.0
+        asymmetry_label = 1 if asymmetry_detected else 0
+
+        if left_score < right_score - 0.5:
+            affected_side = "Left"
+        elif right_score < left_score - 0.5:
+            affected_side = "Right"
+        else:
+            affected_side = "None"
+
+        # 6. Create SensoryDetails and Patient Object
+        # We pass the calculated velocity into the sensory object
+        new_sensory = SensoryDetails(
+            left_score,
+            right_score,
+            affected_side,
+            asymmetry_label,
+            score_velocity=current_velocity
+        )
+
+        # Create the unified patient object
+        patient = Patient.create(new_patient_details, new_sensory)
+
+        # 7. Add context data for the prediction function
+        patient_dict = patient.__dict__
+        patient_dict['baseline'] = baseline # Pass baseline for cliff-edge check
+        patient_dict['id'] = patient_id
+
+        # 8. EXECUTE PREDICTION: Calls ML model with Velocity and Baseline context
+        prediction = predict_stroke(patient_dict)
+
+        # 9. Add metadata for the UI
         prediction["model_loaded"] = model is not None
+        prediction["velocity_detected"] = current_velocity
+        prediction["time_since_last_reading"] = t_delta
 
+        # Construct final response
         data = jsonify({
             "success": True,
             "prediction": prediction,
-            "received_data": patient.__dict__,
+            "received_data": patient_dict,
             "model_status": "loaded" if model is not None else "not_loaded"
         }).json
-        print(data)
-        return render_template('result.html', data=data,model_loaded=model is not None)
+
+        print(f"📊 Prediction Result for Patient {patient_id}: {prediction['sensory_response']}")
+
+        return render_template('result.html', data=data, model_loaded=model is not None)
+
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 def get_dashboard_stats():
     patients = get_sample_patients()
