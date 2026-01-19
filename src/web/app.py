@@ -544,8 +544,8 @@ def dashboard_doctor(patient_id):
 def dashboard_patient(patient_id):
     patient_info = dbmanager.getByID('exception_report', patient_id)
     readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
-    print(readings[0].__dict__)
-    return render_template('dashboard_patient.html',patient=patient_info,readings=readings,model_loaded=model is not None)
+    notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
+    return render_template('dashboard_patient.html',patient=patient_info,readings=readings, notifs=notifs,model_loaded=model is not None)
 
 @app.route('/exception-report')
 def exception_report():

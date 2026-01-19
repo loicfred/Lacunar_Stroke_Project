@@ -16,7 +16,7 @@
         <h1>Lacunar Stroke Predictor <span>PATIENT</span></h1>
     </div>
     <div class="user-info">
-        <div class="notification-badge" id="notificationBtn">
+        <div class="notification-badge" id="notificationBtn" onclick="showNotifications()">
             <i class="fas fa-bell fa-lg"></i>
             <span class="notification-count" id="notificationCount">2</span>
         </div>
@@ -31,6 +31,7 @@
             <i class="fas fa-sign-out-alt"></i> Logout
         </button>
     </div>
+    <script src="../static/charts.js"></script>
 </header>
 
 <!-- Main Dashboard -->
@@ -79,6 +80,8 @@
 
         <!-- Recent Readings Table -->
         <div class="card" id="recent-readings">
+            <script>initializePatientCharts({{ ((patient.highest_reading_asymmetry_index*100)+1) | round(2) }});</script>
+
             <div class="card-header">
                 <h2 class="card-title">Recent Readings</h2>
                 <i class="fas fa-table card-icon"></i>
@@ -106,6 +109,7 @@
                         {{ reading.risk_label }}
                     </span></td>
                 </tr>
+                <script>updatePatientChart('{{ reading.timestamp }}',{{ (reading.asymmetry_index*100) | round(4) }});</script>
                 {% endfor %}
                 </tbody>
             </table>
@@ -122,6 +126,18 @@
             </div>
             <ul class="alert-list" id="alertList">
                 <!-- Alerts populated by JavaScript -->
+
+                {% for notif in notifs %}
+                {% if notif.type == 'Critical' %}
+                <li class="alert-item critical">
+                    <div>
+                        <strong>{{ notif.message }}</strong>
+                        <div class="alert-time">{{ notif.timestamp }}</div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                </li>
+                {% endif %}
+                {% endfor %}
             </ul>
             <div class="text-center mt-10">
                 <button class="btn btn-view">
@@ -171,12 +187,25 @@
         </div>
         <div class="p-20" id="notificationContent">
             <!-- Notifications loaded here -->
+
+            {% for notif in notifs %}
+            <div class="alert-item {{ notif.type }}">
+                <strong>{{ notif.title }}</strong>
+                <p>{{ notif.message }}</p>
+                <div class="alert-time">{{ notif.timestamp }}</div>
+            </div>
+            {% endfor %}
+
+            <div class="text-center mt-20">
+                <button class="btn" onclick="clearAllNotifications()" style="background: #6C757D; color: white;">
+                    Clear All Notifications
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Scripts -->
-<script src="../static/charts.js"></script>
 <script>
     // ===== PATIENT DASHBOARD FUNCTIONS =====
 
@@ -256,32 +285,6 @@
     function showNotifications() {
         const modal = document.getElementById('notificationModal');
         modal.style.display = 'flex';
-
-        // Load notification content
-        const content = document.getElementById('notificationContent');
-        content.innerHTML = `
-                <h3>Recent Alerts</h3>
-                <div class="alert-item critical">
-                    <strong>Critical Alert</strong>
-                    <p>Asymmetry reached 23% at 10:30 AM</p>
-                    <div class="alert-time">Just now</div>
-                </div>
-                <div class="alert-item">
-                    <strong>Warning</strong>
-                    <p>Missed reading scheduled for 9:00 AM</p>
-                    <div class="alert-time">2 hours ago</div>
-                </div>
-                <div class="alert-item">
-                    <strong>Info</strong>
-                    <p>Dr. Smith reviewed your latest readings</p>
-                    <div class="alert-time">Yesterday</div>
-                </div>
-                <div class="text-center mt-20">
-                    <button class="btn" onclick="clearAllNotifications()" style="background: #6C757D; color: white;">
-                        Clear All Notifications
-                    </button>
-                </div>
-            `;
     }
     // Clear notifications
     function clearAllNotifications() {
@@ -409,8 +412,10 @@
         }
     }
 
-
     setInterval(checkForNewData, 15000);
+</script>
+<script>
+
 </script>
 </body>
 </html>

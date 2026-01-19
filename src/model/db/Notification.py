@@ -5,4 +5,4 @@ class Notification:
         self.title = kwargs.get("title")
         self.message = kwargs.get("message")
         self.timestamp = kwargs.get("timestamp")
-        self.critical = kwargs.get("critical")
+        self.type = kwargs.get("type")

@@ -7,13 +7,13 @@ let detailChart = null;
 // ===== PATIENT DASHBOARD CHARTS =====
 
 // Initialize Patient Asymmetry Chart
-function initializePatientCharts() {
+function initializePatientCharts(max) {
     const ctx = document.getElementById('asymmetryChart');
     if (!ctx) return;
 
     // Sample data for last 7 days
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
-    const asymmetryData = [18, 15, 22, 19, 14, 16, 12];
+    const days = ['']; // data is empty
+    const asymmetryData = [0]; // data is empty
 
     // Determine colors based on values (following 20% rule)
     const pointColors = asymmetryData.map(value =>
@@ -67,7 +67,7 @@ function initializePatientCharts() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 30,
+                    max: max,
                     grid: {
                         color: 'rgba(0,0,0,0.05)'
                     },
@@ -119,12 +119,15 @@ function initializePatientCharts() {
 }
 
 // Update patient chart with new data point
-function updatePatientChart(newAsymmetryValue) {
+function updatePatientChart(timestamp, newAsymmetryValue) {
     if (!asymmetryChart) return;
 
     // Add current time as label
-    const now = new Date();
-    const timeLabel = now.getHours().toString().padStart(2, '0') + ':' +
+    const now = new Date(timestamp.replace(" ", "T"));
+    const timeLabel =
+        (now.getMonth() + 1).toString().padStart(2, '0') + '/' +
+        now.getDate().toString().padStart(2, '0') + ' ' +
+        now.getHours().toString().padStart(2, '0') + ':' +
         now.getMinutes().toString().padStart(2, '0');
 
     // Add new data point and remove oldest
