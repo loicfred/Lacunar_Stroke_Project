@@ -477,13 +477,21 @@ def doctor_dashboard():
         user_id = session['user_id']
         doctor_info = dbmanager.getByID('doctor_info', user_id) if dbmanager.getByID('doctor_info', user_id) else None
         patients = dbmanager.getAllWhere('exception_report', 'doctor_id = ?', user_id)
+
+        critical_count = sum(1 for exception in patients if hasattr(exception, 'latest_reading_risk_label') and exception.latest_reading_risk_label == 'Critical') if patients else 0
+        borderline_count = sum(1 for exception in patients if hasattr(exception, 'latest_reading_risk_label') and exception.latest_reading_risk_label == 'Borderline') if patients else 0
+        normal_count = sum(1 for exception in patients if hasattr(exception, 'latest_reading_risk_label') and exception.latest_reading_risk_label == 'Normal') if patients else 0
+
         notifications = dbmanager.callProcedure('notification','call GetCriticalAlert(?)', user_id)
+        alertsCount = sum(1 for exception in notifications if hasattr(exception, 'id') and exception.type == 'Critical') if notifications else 0
+
         return render_template('dashboard_doctor.html',
                                doctor=doctor_info, patients=patients,
+                               criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, alertscount=alertsCount,
                                notifications=notifications)
     except Exception as e:
         print(f"Dashboard error: {e}")
-        return render_template('dashboard_doctor.html', error=str(e))
+        return render_template('exception_report.html', error=str(e))
 
 @app.route('/exception-report')
 def exception_report():
@@ -491,11 +499,12 @@ def exception_report():
         if 'user_id' not in session or session['role'] != 'DOCTOR':
             return redirect('/login')
         exception_list = dbmanager.getAll('exception_report')
-        critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
-        borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
-        normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal')
-    
+        critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical') if exception_list else 0
+        borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline') if exception_list else 0
+        normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal') if exception_list else 0
+
         avg_asym = round(sum(exception.highest_reading_asymmetry_index for exception in exception_list) / len(exception_list) * 100, 2)
+        if not avg_asym: avg_asym = 0
 
         filtered_exception_list = [exception for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label in ['Critical', 'Borderline']]
 
