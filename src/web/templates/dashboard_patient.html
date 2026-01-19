@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="../../static/comstyle.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Chart Container */
+        .chart-container {
+            {% if session.get('role') == 'DOCTOR' %}
+            height: 500px;
+            {% else %}
+            height: 300px;
+            {% endif %}
+            position: relative;
+        }
+    </style>
 </head>
 <body>
 <!-- Header -->
@@ -61,6 +72,38 @@
                     <label>Last Reading:</label>
                     <span id="lastReadingTime">{{ (patient.latest_reading_timestamp) }}</span>
                 </div>
+                {% if session.get('role') == 'DOCTOR' %}
+                <div class="display: flex;">
+                    <div class="info-group mt-10" style="width: 50%;">
+                        <label>Patient ID:</label>
+                        <span id="id">{{ (patient.id) }}</span>
+                    </div>
+                    <div class="info-group mt-10" style="width: 50%;">
+                        <label>Patient Age Group:</label>
+                        <span id="age_group">{{ (patient.age_group) }}</span>
+                    </div>
+                </div>
+                <div class="display: flex;">
+                    <div class="info-group mt-10" style="width: 50%;">
+                        <label>Sex:</label>
+                        <span id="sex">{{ (patient.sex) }}</span>
+                    </div>
+                    <div class="info-group mt-10" style="width: 50%;">
+                        <label>Hypertension Status:</label>
+                        <span id="hypertension">{% if (patient.hypertension == 1) %}Yes{% else %}No{% endif %}</span>
+                    </div>
+                </div>
+                <div class="display: flex;">
+                    <div class="info-group mt-10" style="width: 50%;">
+                        <label>Diabetes Status:</label>
+                        <span id="diabetes">{% if (patient.diabetes == 1) %}Yes{% else %}No{% endif %}</span>
+                    </div>
+                    <div class="info-group mt-10" style="width: 50%;">
+                        <label>Smoking History Status:</label>
+                        <span id="smoking_history">{% if (patient.smoking_history == 1) %}Yes{% else %}No{% endif %}</span>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
