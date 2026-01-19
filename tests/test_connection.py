@@ -119,7 +119,7 @@ if __name__ == "__main__":
         print("🎉 Database connection test PASSED!")
         print("\n📋 Next steps:")
         print("1. Run: python app.py")
-        print("2. Visit: http://localhost:5000/register")
+        print("2. Visit: http://localhost:5000/register  ")
         print("3. Create your account")
         print("4. Login at: http://localhost:5000/login")
         print("5. Check your dashboard")
