@@ -11,7 +11,7 @@ from model.sample.PatientDetails import PatientDetails
 
 logging.basicConfig(level=logging.INFO)
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect, session
 import data_simulation.patient_generator as patient_gen
 import random
 import sys
@@ -436,6 +436,25 @@ def api_model_test():
 @app.route('/') # Redirect url to the home page
 def home():
     return render_template('index.html', model_loaded=model is not None)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return render_template('login.html')
+    return None
+    # Handle POST request for login
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'GET':
+        return render_template('register.html')
+    return None
+    # Handle POST request for registration
 
 @app.route('/dataset') # Page to upload a dataset to view
 def upload_dataset():
