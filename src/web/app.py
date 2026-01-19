@@ -99,11 +99,7 @@ def predict_with_model(patient_data):
         sm = int(patient_data.get("smoking", 0))
 
         input_data = pd.DataFrame([[
-            left, right, asymmetry_index,
-            int(patient_data.get("hypertension", 0)),
-            int(patient_data.get("diabetes", 0)),
-            int(patient_data.get("smoking", 0)),
-            score_velocity
+            left, right, asymmetry_index,ht, db, sm, score_velocity
         ]], columns=['left_sensory_score', 'right_sensory_score', 'asymmetry_index',
                      'hypertension', 'diabetes', 'smoking_history', 'score_velocity'])
 
@@ -158,8 +154,8 @@ def predict_with_model(patient_data):
             "is_bilateral": prediction_code == 4 or affected_side == "Bilateral (Both Sides)"
         }
 
-    except Exception as e:
-        print(f"❌ Model prediction error: {e}")
+    except Exception as ex:
+        print(f"❌ Model prediction error: {ex}")
         return None
 
 
@@ -361,10 +357,10 @@ def api_predict_stroke():
 
         return render_template('result.html', data=data, model_loaded=model is not None)
 
-    except Exception as e:
+    except Exception as ex:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": str(ex)}), 500
 
 
 def get_dashboard_stats():
@@ -489,8 +485,8 @@ def doctor_dashboard():
                                doctor=doctor_info, patients=patients,
                                criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, alertscount=alertsCount,
                                notifications=notifications)
-    except Exception as e:
-        print(f"Dashboard error: {e}")
+    except Exception as ex:
+        print(f"Dashboard error: {ex}")
         return render_template('exception_report.html', error=str(e))
 
 @app.route('/exception-report')
@@ -510,8 +506,8 @@ def exception_report():
 
         return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
                            model_loaded=model is not None)
-    except Exception as e:
-        print(f"Dashboard error: {e}")
+    except Exception as ex:
+        print(f"Dashboard error: {ex}")
         return render_template('exception_report.html', error=str(e))
 
 
@@ -524,8 +520,8 @@ def dashboard_patient(patient_id):
         readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
         notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
         return render_template('dashboard_patient.html',patient=patient_info,readings=readings, notifs=notifs,model_loaded=model is not None)
-    except Exception as e:
-        print(f"Dashboard error: {e}")
+    except Exception as ex:
+        print(f"Dashboard error: {ex}")
         return render_template('dashboard_patient.html', error=str(e))
 @app.route('/dashboard/patient')
 def default_dashboard():
@@ -568,7 +564,7 @@ def server_error(_):
     return jsonify({"success": False, "error": "Internal server error"}), 500
 
 @app.errorhandler(400)
-def bad_request(e):
+def bad_request(ex):
     return jsonify({"error": "Bad request", "message": "Invalid input"}), 400
 
 # ========== MAIN EXECUTION ==========

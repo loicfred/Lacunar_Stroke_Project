@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, session
+from flask import Blueprint, jsonify, session, request
 from src.model.database import get_connection  # Direct import since database.py is in same directory
 from src.model.db.Notification import Notification
 import json
