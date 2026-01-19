@@ -159,4 +159,4 @@ def login():
 def logout():
     """Handle user logout"""
     session.clear()
-    return redirect('/'_)
+    return redirect('/')
