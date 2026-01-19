@@ -12,8 +12,8 @@ from model.sample.PatientDetails import PatientDetails
 logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, render_template, jsonify, request, redirect, session
-from auth import auth_bp  # Import auth blueprint
-from notifications import notifications_bp  # Import notifications blueprint
+from src.model.auth import auth_bp  # Import auth blueprint
+from src.model.notifications import notifications_bp  # Import notifications blueprint
 import data_simulation.patient_generator as patient_gen
 import random
 import sys
@@ -30,7 +30,7 @@ sys.path.insert(0, parent_dir)
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SESSION_SECRET', 'your-secret-key-here-change-in-production'
+app.secret_key = os.environ.get('SESSION_SECRET', 'your-secret-key-here-change-in-production')
 
 # Register blueprints
 app.register_blueprint(auth_bp)
@@ -486,15 +486,14 @@ def doctor_dashboard():
 
     # Get doctor's info and patients
     try:
-        from database import getByID, getAllWhere
         user_id = session['user_id']
-        doctor_info = getByID('doctor_info', user_id) if getByID('doctor_info', user_id) else None
+        doctor_info = dbmanager.getByID('doctor_info', user_id) if dbmanager.getByID('doctor_info', user_id) else None
 
         # Get all patients for doctor view
-        patients = getAllWhere('patient_info', '1=1')[:10]  # First 10 patients
+        patients = dbmanager.getAllWhere('patient_info', '1=1')[:10]  # First 10 patients
 
         # Get notifications
-        notifications = getAllWhere('notification', '1=1 ORDER BY timestamp DESC')[:5]
+        notifications = dbmanager.getAllWhere('notification', '1=1 ORDER BY timestamp DESC')[:5]
 
         return render_template('dashboard_doctor.html',
                                doctor=doctor_info,
@@ -512,17 +511,16 @@ def patient_dashboard():
         return redirect('/login')
 
     try:
-        from database import getByID, getAllWhere
         user_id = session['user_id']
 
         # Get patient info
-        patient_info = getByID('patient_info', user_id)
+        patient_info = dbmanager.getByID('patient_info', user_id)
 
         # Get patient's readings
-        readings = getAllWhere('reading', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:10]
+        readings = dbmanager.getAllWhere('reading', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:10]
 
         # Get patient's notifications
-        notifications = getAllWhere('notification', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:5]
+        notifications = dbmanager.getAllWhere('notification', 'patient_id = ? ORDER BY timestamp DESC', user_id)[:5]
 
         return render_template('dashboard_patient.html',
                                patient=patient_info,
