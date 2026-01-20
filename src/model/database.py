@@ -38,9 +38,9 @@ ENTITY_REGISTRY = {
     "patient_info": Patient_Info,
     "doctor_info": Doctor_Info,
     "reading": Reading,
-    "detailed_reading": Detailed_Reading,  # Use Patient_Info or create a DetailedReport class
+    "detailed_reading": Detailed_Reading,
     "notification": Notification,
-    # Note: exception_report is not in database, it's created dynamically
+    "exception_report": Patient_Report,
 }
 
 def callProcedure(table_name, statement, *value):
