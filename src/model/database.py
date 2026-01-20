@@ -22,15 +22,25 @@ def get_connection():
         database="lacunar_stroke"
     )
 
+#ENTITY_REGISTRY = {
+#    "user": User,
+#    "patient_info": Patient_Info,
+#   "doctor_info": Doctor_Info,
+#    "reading": Reading,
+#    "detailed_reading": Detailed_Reading,
+#    "patient_report": Patient_Report,
+#    "exception_report": Patient_Report,
+#    "notification": Notification
+#}
+
 ENTITY_REGISTRY = {
     "user": User,
     "patient_info": Patient_Info,
     "doctor_info": Doctor_Info,
     "reading": Reading,
-    "detailed_reading": Detailed_Reading,
-    "patient_report": Patient_Report,
-    "exception_report": Patient_Report,
-    "notification": Notification
+    "detailed_reading": Detailed_Reading,  # Use Patient_Info or create a DetailedReport class
+    "notification": Notification,
+    # Note: exception_report is not in database, it's created dynamically
 }
 
 def callProcedure(table_name, statement, *value):
@@ -155,39 +165,57 @@ def get_patient_baseline(patient_id):
 
 def get_reading_velocity(patient_id):
     """
-    IMPROVEMENT: Calculates the change in score and time since the last reading.
-    Returns: (left_delta, right_delta, hours_passed)
+    Calculate the rate of change in sensory scores between the two most recent readings.
+    Returns: (left_velocity, right_velocity, time_diff_hours)
     """
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        # Get the two most recent readings
+
+        # Get the two most recent readings for this patient
         query = """
-            SELECT left_sensory_score, right_sensory_score, timestamp
-            FROM reading
-            WHERE patient_id = ?
-            ORDER BY timestamp DESC LIMIT 2 \
-            """
+                SELECT timestamp, left_sensory_score, right_sensory_score
+                FROM reading
+                WHERE patient_id = %s
+                ORDER BY timestamp DESC
+                LIMIT 2 \
+                """
         cursor.execute(query, (patient_id,))
-        rows = cursor.fetchall()
+        readings = cursor.fetchall()
 
-        if len(rows) < 2:
-            return 0.0, 0.0, 0.0 # Not enough history to calculate velocity
+        if len(readings) < 2:
+            # Not enough readings to calculate velocity
+            return 0.0, 0.0, 0.0
 
-        current, previous = rows[0], rows[1]
+        current = readings[0]
+        previous = readings[1]
+
+        # Convert string scores to floats
+        current_left = float(current['left_sensory_score']) if current['left_sensory_score'] is not None else 0.0
+        current_right = float(current['right_sensory_score']) if current['right_sensory_score'] is not None else 0.0
+        previous_left = float(previous['left_sensory_score']) if previous['left_sensory_score'] is not None else 0.0
+        previous_right = float(previous['right_sensory_score']) if previous['right_sensory_score'] is not None else 0.0
 
         # Calculate time difference in hours
         time_diff = (current['timestamp'] - previous['timestamp']).total_seconds() / 3600
-        if time_diff == 0: time_diff = 0.01 # Avoid division by zero
+        if time_diff == 0:
+            time_diff = 0.01  # Avoid division by zero
 
         # Calculate rate of change per hour
-        left_velocity = (current['left_sensory_score'] - previous['left_sensory_score']) / time_diff
-        right_velocity = (current['right_sensory_score'] - previous['right_sensory_score']) / time_diff
+        left_velocity = (current_left - previous_left) / time_diff
+        right_velocity = (current_right - previous_right) / time_diff
 
         return round(left_velocity, 3), round(right_velocity, 3), round(time_diff, 2)
-    finally:
-        conn.close()
 
+    except Exception as e:
+        print(f"Error calculating reading velocity: {e}")
+        import traceback
+        traceback.print_exc()
+        return 0.0, 0.0, 0.0
+    finally:
+        if conn:
+            conn.close()
 
 def generate_sample_data():
     total_patients = 100

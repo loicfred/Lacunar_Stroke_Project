@@ -19,22 +19,58 @@
         </div>
 
         <!-- Risk card -->
+        <!-- Replace the existing risk card section with this: -->
         <section class="risk-card blue-card">
             <div class="risk-row">
                 <div class="risk-left">
                     <div class="risk-badge {{ data.prediction.risk_level }}-risk">
                         <span class="dot"></span>
-                        {{ data.prediction.prediction_label }}
+                        Sensory Response: {{ data.prediction.sensory_response }}
                     </div>
                     <div class="risk-badge {{ data.prediction.risk_level }}-risk">
                         <span class="dot"></span>
-                        {{ data.prediction.clinical_category }}
+                        Affected Side:
+                        {% if data.prediction.affected_side != "None" %}
+                        {{ data.prediction.affected_side }}
+                        {% else %}
+                        None (Bilateral/Normal)
+                        {% endif %}
                     </div>
                     <div class="risk-badge {{ data.prediction.risk_level }}-risk">
                         <span class="dot"></span>
                         Risk Level: {{ data.prediction.risk_level }}
                     </div>
-                    <div class="risk-meta">Last updated: Jan 12, 2026</div>
+                    <div class="risk-badge {{ data.prediction.risk_level }}-risk">
+                        <span class="dot"></span>
+                        Confidence: {{ (data.prediction.model_confidence * 100)|round|int }}%
+                    </div>
+                    <div class="risk-meta">Last updated: {{ data.timestamp }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section blue-card">
+            <h3>Clinical Details</h3>
+            <div class="list">
+                <div class="item">
+                    <div class="lead">↔️</div>
+                    <div class="label">Asymmetry Index</div>
+                    <div class="tag blue">{{ data.prediction.asymmetry_index }}</div>
+                </div>
+                <div class="item">
+                    <div class="lead">🫲</div>
+                    <div class="label">Left Sensory Score</div>
+                    <div class="tag blue">{{ data.sensory_scores.left }}</div>
+                </div>
+                <div class="item">
+                    <div class="lead">🫱</div>
+                    <div class="label">Right Sensory Score</div>
+                    <div class="tag blue">{{ data.sensory_scores.right }}</div>
+                </div>
+                <div class="item">
+                    <div class="lead">📍</div>
+                    <div class="label">Reading ID</div>
+                    <div class="tag blue">{{ data.reading_id }}</div>
                 </div>
             </div>
         </section>
@@ -64,6 +100,20 @@
                 Always consult with a healthcare professional for medical advice.
             </p>
         </section>
+
+        <br>
+
+        <!-- Return to Dashboard -->
+        <section class="section blue-card">
+            <div class="list">
+                <a href="/dashboard/patient" class="item" style="text-decoration: none; cursor: pointer;">
+                    <div class="lead">←</div>
+                    <div class="label">Return to Dashboard</div>
+                    <div class="tag blue">Click here</div>
+                </a>
+            </div>
+        </section>
+
     </div>
 </main>
 </body>

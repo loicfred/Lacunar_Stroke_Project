@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensory Test - Prediction Form</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='predict_form.css') }}">
+    <style>
+        /* Add these styles to your existing predict_form.css or here */
+        .form-container {
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .slider-container {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #14005c;
+        }
+
+        .slider-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .slider-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .slider-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .slider-header .hand-icon {
+            font-size: 24px;
+        }
+
+        .slider-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #14005c;
+            text-align: center;
+            margin: 10px 0;
+            min-height: 40px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 10px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #d32f2f, #f57c00, #ffb300, #8bc34a, #388e3c);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #14005c;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+        .slider-marks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .slider-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .health-factors {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+            border-left: 4px solid #14005c;
+        }
+
+        .health-factors h3 {
+            color: #14005c;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .checkbox-item:hover {
+            border-color: #14005c;
+            background: #f0f2ff;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .risk-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .test-case-info {
+            background: #d1ecf1;
+            border: 1px solid #0c5460;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .test-presets {
+            background: #e8f5e9;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            padding: 12px;
+            background: white;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .preset-btn:hover {
+            background: #4caf50;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .score-guide {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+
+        .score-guide h4 {
+            margin-top: 0;
+            color: #14005c;
+            margin-bottom: 15px;
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .guide-item {
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .guide-0-2 { background: #ffebee; border-left: 4px solid #d32f2f; }
+        .guide-3-4 { background: #fff3e0; border-left: 4px solid #f57c00; }
+        .guide-5-6 { background: #fff8e1; border-left: 4px solid #ffb300; }
+        .guide-7-8 { background: #f1f8e9; border-left: 4px solid #8bc34a; }
+        .guide-9-10 { background: #e8f5e9; border-left: 4px solid #388e3c; }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .submit-btn {
+            flex: 1;
+            padding: 16px;
+            background: linear-gradient(135deg, #14005c, #3a00b3);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 200px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(20, 0, 92, 0.3);
+        }
+
+        .cancel-btn {
+            padding: 16px 24px;
+            background: white;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .cancel-btn:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .slider-group {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .preset-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .submit-btn, .cancel-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="form-container">
+    <header class="form-header">
+        <h1>🧠 Sensory Test for Stroke Risk Assessment</h1>
+        <p class="subtitle">Use sliders to adjust sensory scores and select health risk factors</p>
+    </header>
+
+    {% if patient_name %}
+    <div class="patient-info">
+        <p><strong>Patient:</strong> {{ patient_name }}</p>
+    </div>
+    {% endif %}
+
+    <div class="test-case-info">
+        <strong>🩺 For Test Case Use:</strong> Adjust sliders and select risk factors to test different clinical scenarios
+    </div>
+
+    <form action="/api/predict" method="POST" id="predictionForm">
+        <!-- Hidden inputs for sensory scores (will be updated by sliders) -->
+        <input type="hidden" id="left_asymmetry" name="left_asymmetry" value="5.0">
+        <input type="hidden" id="right_asymmetry" name="right_asymmetry" value="5.0">
+
+        <!-- Sensory Scores Section with Sliders -->
+        <div class="slider-container">
+            <h2>Sensory Assessment (0-10 scale)</h2>
+            <p>Adjust sliders to simulate sensory response levels</p>
+
+            <div class="slider-group">
+                <!-- Left Side Slider -->
+                <div class="slider-item">
+                    <div class="slider-header">
+                        <span class="hand-icon">🫲</span>
+                        <h3 class="slider-label">Left Side Sensory Score</h3>
+                    </div>
+
+                    <div class="slider-value" id="left-value">5.0</div>
+
+                    <input type="range"
+                           min="0"
+                           max="10"
+                           step="0.1"
+                           value="5.0"
+                           class="slider"
+                           id="left-slider"
+                           oninput="updateLeftValue(this.value)">
+
+                    <div class="slider-marks">
+                        <span>0 (No Response)</span>
+                        <span>5</span>
+                        <span>10 (Normal)</span>
+                    </div>
+                </div>
+
+                <!-- Right Side Slider -->
+                <div class="slider-item">
+                    <div class="slider-header">
+                        <span class="hand-icon">🫱</span>
+                        <h3 class="slider-label">Right Side Sensory Score</h3>
+                    </div>
+
+                    <div class="slider-value" id="right-value">5.0</div>
+
+                    <input type="range"
+                           min="0"
+                           max="10"
+                           step="0.1"
+                           value="5.0"
+                           class="slider"
+                           id="right-slider"
+                           oninput="updateRightValue(this.value)">
+
+                    <div class="slider-marks">
+                        <span>0 (No Response)</span>
+                        <span>5</span>
+                        <span>10 (Normal)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asymmetry Display -->
+            <div style="text-align: center; margin-top: 20px; padding: 15px; background: white; border-radius: 8px;">
+                <strong>Current Asymmetry:</strong>
+                <span id="asymmetry-value" style="color: #14005c; font-weight: bold; margin-left: 10px;">0.0</span>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                    (Difference between left and right scores)
+                </div>
+            </div>
+        </div>
+
+        <!-- Score Interpretation Guide -->
+        <div class="score-guide">
+            <h4>📊 Score Interpretation Guide</h4>
+            <div class="guide-grid">
+                <div class="guide-item guide-0-2">
+                    <strong>0-2.9:</strong> Severe reduction<br>
+                    <small>Critical risk</small>
+                </div>
+                <div class="guide-item guide-3-4">
+                    <strong>3-4.9:</strong> Significant reduction<br>
+                    <small>High risk</small>
+                </div>
+                <div class="guide-item guide-5-6">
+                    <strong>5-6.9:</strong> Moderate reduction<br>
+                    <small>Medium risk</small>
+                </div>
+                <div class="guide-item guide-7-8">
+                    <strong>7-8.9:</strong> Mild reduction<br>
+                    <small>Low risk</small>
+                </div>
+                <div class="guide-item guide-9-10">
+                    <strong>9-10:</strong> Normal response<br>
+                    <small>Very low risk</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Factors Section -->
+        <div class="health-factors">
+            <h3>🩺 Health Risk Factors (Used in Risk Calculation)</h3>
+
+            <div class="risk-note">
+                <strong>Note:</strong> These clinical factors influence the ML model prediction.
+                Each factor increases stroke risk:
+                <ul style="margin: 10px 0 0 25px;">
+                    <li><strong>Hypertension:</strong> Increases stroke risk by 60-80%</li>
+                    <li><strong>Diabetes:</strong> Increases risk by 2-4 times</li>
+                    <li><strong>Smoking:</strong> Doubles stroke risk</li>
+                </ul>
+            </div>
+
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="hypertension" name="hypertension" value="1">
+                    <label for="hypertension">✅ Hypertension</label>
+                </div>
+
+                <div class="checkbox-item">
+                    <input type="checkbox" id="diabetes" name="diabetes" value="1">
+                    <label for="diabetes">✅ Diabetes</label>
+                </div>
+
+                <div class="checkbox-item">
+                    <input type="checkbox" id="smoking" name="smoking" value="1">
+                    <label for="smoking">✅ Smoking History</label>
+                </div>
+            </div>
+
+            <!-- Demographic info for test cases -->
+            <div style="margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <label for="age_group" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                        Age Group:
+                    </label>
+                    <select id="age_group" name="age_group" class="form-select"
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="30-39">30-39 years</option>
+                        <option value="40-49">40-49 years</option>
+                        <option value="50-59" selected>50-59 years</option>
+                        <option value="60-69">60-69 years</option>
+                        <option value="70+">70+ years</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="sex" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                        Sex:
+                    </label>
+                    <select id="sex" name="sex" class="form-select"
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="Male" selected>Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Case Presets -->
+        <div class="test-presets">
+            <h3>🚀 Quick Test Cases</h3>
+            <p>Click a preset to load common clinical scenarios:</p>
+
+            <div class="preset-buttons">
+                <button type="button" class="preset-btn"
+                        data-left="8.5" data-right="8.3"
+                        data-ht="0" data-db="0" data-sm="0"
+                        data-age="50-59" data-sex="Male">
+                    Normal Bilateral
+                </button>
+                <button type="button" class="preset-btn"
+                        data-left="4.2" data-right="8.7"
+                        data-ht="1" data-db="0" data-sm="1"
+                        data-age="65" data-sex="Male">
+                    Left Unilateral + HT+Smoking
+                </button>
+                <button type="button" class="preset-btn"
+                        data-left="8.9" data-right="3.8"
+                        data-ht="1" data-db="1" data-sm="0"
+                        data-age="72" data-sex="Female">
+                    Right Unilateral + HT+DM
+                </button>
+                <button type="button" class="preset-btn"
+                        data-left="3.5" data-right="3.8"
+                        data-ht="1" data-db="1" data-sm="1"
+                        data-age="68" data-sex="Male">
+                    Bilateral + All Risk Factors
+                </button>
+                <button type="button" class="preset-btn"
+                        data-left="6.2" data-right="8.0"
+                        data-ht="0" data-db="0" data-sm="0"
+                        data-age="55" data-sex="Female">
+                    Borderline Asymmetry
+                </button>
+            </div>
+        </div>
+
+        <!-- Model Status -->
+        <div class="model-status" style="text-align: center; padding: 15px; background: #f0f2ff; border-radius: 8px;">
+            <p style="margin: 0;">
+                <strong>Prediction Engine:</strong>
+                {% if model_loaded %}
+                <span style="color: green;">✅ ML Model Active</span>
+                <small style="color: #666;">(Using all risk factors in prediction)</small>
+                {% else %}
+                <span style="color: orange;">⚠️ Threshold Analysis Mode</span>
+                <small style="color: #666;">(Health factors have reduced impact)</small>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-actions">
+            <button type="submit" class="submit-btn">
+                🧠 Run Prediction Analysis
+            </button>
+            <a href="/dashboard/patient" class="cancel-btn">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Update left slider value display
+    function updateLeftValue(value) {
+        document.getElementById('left-value').textContent = value;
+        document.getElementById('left_asymmetry').value = value;
+        updateAsymmetry();
+    }
+
+    // Update right slider value display
+    function updateRightValue(value) {
+        document.getElementById('right-value').textContent = value;
+        document.getElementById('right_asymmetry').value = value;
+        updateAsymmetry();
+    }
+
+    // Calculate and display asymmetry
+    function updateAsymmetry() {
+        const left = parseFloat(document.getElementById('left_asymmetry').value);
+        const right = parseFloat(document.getElementById('right_asymmetry').value);
+        const asymmetry = Math.abs(left - right).toFixed(1);
+        document.getElementById('asymmetry-value').textContent = asymmetry;
+
+        // Color code based on asymmetry level
+        const elem = document.getElementById('asymmetry-value');
+        if (asymmetry > 4) {
+            elem.style.color = '#d32f2f'; // Red
+        } else if (asymmetry > 2) {
+            elem.style.color = '#f57c00'; // Orange
+        } else if (asymmetry > 1) {
+            elem.style.color = '#ffb300'; // Yellow
+        } else {
+            elem.style.color = '#388e3c'; // Green
+        }
+    }
+
+    // Initialize asymmetry display
+    updateAsymmetry();
+
+    // Preset buttons functionality
+    document.querySelectorAll('.preset-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            // Set sliders
+            document.getElementById('left-slider').value = this.dataset.left;
+            document.getElementById('right-slider').value = this.dataset.right;
+
+            // Update displays
+            updateLeftValue(this.dataset.left);
+            updateRightValue(this.dataset.right);
+
+            // Set checkboxes
+            document.getElementById('hypertension').checked = this.dataset.ht === '1';
+            document.getElementById('diabetes').checked = this.dataset.db === '1';
+            document.getElementById('smoking').checked = this.dataset.sm === '1';
+
+            // Set demographics
+            document.getElementById('age_group').value = this.dataset.age;
+            document.getElementById('sex').value = this.dataset.sex;
+
+            // Show confirmation
+            showPresetInfo(this);
+        });
+    });
+
+    // Show preset information
+    function showPresetInfo(button) {
+        const presetInfo = {
+            'Normal Bilateral': 'Both sides show normal responses with no risk factors.',
+            'Left Unilateral + HT+Smoking': 'Left side deficit with hypertension and smoking history.',
+            'Right Unilateral + HT+DM': 'Right side deficit with hypertension and diabetes.',
+            'Bilateral + All Risk Factors': 'Both sides reduced with all major risk factors.',
+            'Borderline Asymmetry': 'Slight asymmetry, borderline case for monitoring.'
+        };
+
+        const presetName = button.textContent.trim();
+        const info = presetInfo[presetName] || 'Test case loaded.';
+
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4caf50;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+        notification.innerHTML = `
+                <strong>${presetName}</strong><br>
+                <small>${info}</small>
+            `;
+
+        document.body.appendChild(notification);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+        document.head.appendChild(style);
+    }
+
+    // Form validation
+    document.getElementById('predictionForm').addEventListener('submit', function(e) {
+        const left = parseFloat(document.getElementById('left_asymmetry').value);
+        const right = parseFloat(document.getElementById('right_asymmetry').value);
+
+        // Basic validation
+        if (isNaN(left) || isNaN(right)) {
+            e.preventDefault();
+            alert('Please enter valid sensory scores');
+            return false;
+        }
+
+        // Show loading state
+        const submitBtn = document.querySelector('.submit-btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '⏳ Analyzing... Please wait';
+        submitBtn.disabled = true;
+
+        // Re-enable after 5 seconds if something goes wrong
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }, 5000);
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Error - Lacunar Stroke Detection</title>
+  <link rel="stylesheet" href="../static/style.css">
+  <style>
+    .error-container {
+      max-width: 600px;
+      margin: 100px auto;
+      padding: 40px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .error-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      color: #dc3545;
+    }
+
+    .error-title {
+      color: #dc3545;
+      margin-bottom: 20px;
+    }
+
+    .error-message {
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      padding: 12px 30px;
+      background: #021571;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+
+    .btn-primary:hover {
+      background: #ff4800;
+    }
+  </style>
+</head>
+<body>
+<div class="error-container">
+  <div class="error-icon">⚠️</div>
+  <h1 class="error-title">Error</h1>
+  <p class="error-message">{{ error }}</p>
+  <a href="{{ redirect_url or '/' }}" class="btn-primary">
+    {% if redirect_url == '/login' %}
+    Go to Login
+    {% else %}
+    Return to Home
+    {% endif %}
+  </a>
+</div>
+</body>
+</html>

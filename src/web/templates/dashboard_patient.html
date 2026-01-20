@@ -4,18 +4,418 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Dashboard - Lacunar Stroke Predictor</title>
-    <link rel="stylesheet" href="../../static/comstyle.css">
+    <link rel="stylesheet" href="/static/comstyle.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Chart Container */
+        /* Additional styles for responsive design */
+        .predict-nav-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .predict-nav-btn:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ba87e 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            text-decoration: none;
+            color: white;
+        }
+
         .chart-container {
-            {% if session.get('role') == 'DOCTOR' %}
-            height: 500px;
-            {% else %}
             height: 300px;
-            {% endif %}
             position: relative;
+        }
+
+        /* Mobile Navigation */
+        .mobile-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: none;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            font-size: 12px;
+            padding: 5px;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .mobile-nav-item i {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .mobile-nav-item.active {
+            color: var(--primary-blue);
+        }
+
+        .mobile-nav-item:hover {
+            color: var(--primary-blue);
+        }
+
+        .mobile-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--danger-red);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            z-index: 1001;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .dashboard-container {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: auto auto auto;
+            }
+
+            #chart-container {
+                grid-column: span 2;
+            }
+
+            #current-status {
+                grid-row: 1;
+            }
+
+            #recent-readings {
+                grid-column: 1;
+                grid-row: 2;
+            }
+
+            #alert-history {
+                grid-column: 2;
+                grid-row: 2;
+            }
+
+            #daily-progress {
+                grid-column: span 2;
+                grid-row: 3;
+            }
+
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .logo h1 {
+                font-size: 18px;
+            }
+
+            .logo span {
+                font-size: 12px;
+            }
+
+            .user-info {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .predict-nav-btn {
+                order: 1;
+                margin-right: 0;
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+
+            .notification-badge {
+                order: 2;
+            }
+
+            .user-profile {
+                order: 3;
+                flex: 1;
+                min-width: 200px;
+            }
+
+            .logout-btn {
+                order: 4;
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+                gap: 15px;
+            }
+
+            .card {
+                grid-column: 1 !important;
+                grid-row: auto !important;
+                margin: 0 10px;
+            }
+
+            .chart-container {
+                height: 250px;
+            }
+
+            .progress-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .data-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 8px 4px;
+                font-size: 12px;
+                min-width: 80px;
+            }
+
+            .display-flex {
+                flex-direction: column;
+            }
+
+            .display-flex > .info-group {
+                width: 100% !important;
+            }
+
+            .asymmetry-percentage {
+                font-size: 36px;
+            }
+
+            .alert-item {
+                padding: 10px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+
+            .alert-item i {
+                align-self: flex-end;
+            }
+
+            .mobile-nav {
+                display: flex;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .container {
+                padding-bottom: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px 5px;
+            }
+
+            .card {
+                padding: 15px;
+                margin: 0 5px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .card-title {
+                font-size: 16px;
+            }
+
+            .card-icon {
+                font-size: 20px;
+            }
+
+            .progress-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-item {
+                text-align: center;
+            }
+
+            .asymmetry-percentage {
+                font-size: 32px;
+            }
+
+            .user-profile {
+                min-width: 150px;
+            }
+
+            .user-profile i {
+                font-size: 24px;
+            }
+
+            #patientName {
+                font-size: 14px;
+            }
+
+            .notes-section {
+                padding: 15px;
+            }
+
+            .notes-input {
+                min-height: 100px;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .logo h1 {
+                font-size: 16px;
+            }
+
+            .predict-nav-btn span {
+                display: none;
+            }
+
+            .predict-nav-btn {
+                padding: 8px;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                justify-content: center;
+            }
+
+            .predict-nav-btn i {
+                margin: 0;
+                font-size: 16px;
+            }
+
+            .asymmetry-percentage {
+                font-size: 28px;
+            }
+
+            .progress-value {
+                font-size: 20px;
+            }
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--danger-red);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            max-width: 300px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.success {
+            background: var(--success-green);
+        }
+
+        .toast.warning {
+            background: var(--warning-yellow);
+        }
+
+        .toast.info {
+            background: var(--primary-blue);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Grid layout fixes */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        #current-status { grid-column: span 4; }
+        #chart-container { grid-column: span 8; }
+        #recent-readings { grid-column: span 7; }
+        #alert-history { grid-column: span 5; }
+        #daily-progress { grid-column: span 12; }
+
+        /* Utility classes */
+        .mt-10 { margin-top: 10px; }
+        .mt-20 { margin-top: 20px; }
+        .p-20 { padding: 20px; }
+        .text-center { text-align: center; }
+
+        /* Display flex utility */
+        .display-flex {
+            display: flex;
+            gap: 10px;
         }
     </style>
 </head>
@@ -27,9 +427,14 @@
         <h1>Lacunar Stroke Predictor <span>PATIENT</span></h1>
     </div>
     <div class="user-info">
+        <!-- Predict Button -->
+        <a href="/predict-form" class="predict-nav-btn" title="Take Sensory Assessment">
+            <i class="fas fa-brain"></i> <span>Predict</span>
+        </a>
+
         <div class="notification-badge" id="notificationBtn" onclick="showNotifications()">
             <i class="fas fa-bell fa-lg"></i>
-            <span class="notification-count" id="notificationCount">2</span>
+            <span class="notification-count" id="notificationCount">{{ notifs|length if notifs else 0 }}</span>
         </div>
         <div class="user-profile">
             <i class="fas fa-user-circle fa-2x"></i>
@@ -42,7 +447,6 @@
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
-    <script src="../../static/charts.js"></script>
 </header>
 
 <!-- Main Dashboard -->
@@ -55,52 +459,68 @@
                 <i class="fas fa-heartbeat card-icon"></i>
             </div>
             <div class="text-center">
-                <div class="asymmetry-percentage percentage-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}" id="currentAsymmetry">
-                    {{ (patient.latest_reading_asymmetry_index*100) | round(4) }}%
+                <div class="asymmetry-percentage percentage-{% if patient.latest_reading_risk_label == 'Critical' %}critical{% elif patient.latest_reading_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}" id="currentAsymmetry">
+                    {% if patient.latest_reading_asymmetry_index is defined %}
+                    {{ (patient.latest_reading_asymmetry_index * 100) | round(2) }}%
+                    {% else %}
+                    0%
+                    {% endif %}
                 </div>
                 <p>Asymmetry Percentage</p>
-                <div class="status-indicator status-{% if patient.avg_risk_label == 'Critical' %}critical{% elif patient.avg_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %} mt-10" id="statusIndicator">
-                    {% if patient.avg_risk_label == 'Critical' %}Critical (> 20%){% elif patient.avg_risk_label == 'Borderline' %}Borderline (15%-20%){% else %}Normal (< 15%){% endif %}
+                <div class="status-indicator status-{% if patient.latest_reading_risk_label == 'Critical' %}critical{% elif patient.latest_reading_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %} mt-10" id="statusIndicator">
+                    {{ patient.latest_reading_risk_label if patient.latest_reading_risk_label else 'No Readings' }}
                 </div>
             </div>
             <div class="mt-20">
                 <div class="info-group">
-                    <label>Total Average Asymmetry :</label>
-                    <span id="avgAsymmetryIndex">{{ (patient.avg_asymmetry_index*100) | round(4) }}%</span>
+                    <label>Total Average Asymmetry:</label>
+                    <span id="avgAsymmetryIndex">
+                        {% if patient.avg_asymmetry_index is defined %}
+                        {{ (patient.avg_asymmetry_index * 100) | round(2) }}%
+                        {% else %}
+                        0%
+                        {% endif %}
+                    </span>
                 </div>
                 <div class="info-group mt-10">
                     <label>Last Reading:</label>
-                    <span id="lastReadingTime">{{ (patient.latest_reading_timestamp) }}</span>
+                    <span id="lastReadingTime">
+                        {% if patient.latest_reading_timestamp %}
+                        {{ patient.latest_reading_timestamp }}
+                        {% else %}
+                        No readings yet
+                        {% endif %}
+                    </span>
                 </div>
                 {% if session.get('role') == 'DOCTOR' %}
-                <div class="display: flex;">
+                <div class="display-flex">
                     <div class="info-group mt-10" style="width: 50%;">
                         <label>Patient ID:</label>
-                        <span id="id">{{ (patient.id) }}</span>
+                        <span id="id">{{ patient.id }}</span>
                     </div>
                     <div class="info-group mt-10" style="width: 50%;">
                         <label>Patient Age Group:</label>
-                        <span id="age_group">{{ (patient.age_group) }}</span>
+                        <span id="age_group">{{ patient.age_group }}</span>
                     </div>
                 </div>
-                <div class="display: flex;">
+                <div class="display-flex">
                     <div class="info-group mt-10" style="width: 50%;">
                         <label>Sex:</label>
-                        <span id="sex">{{ (patient.sex) }}</span>
+                        <span id="sex">{{ patient.sex }}</span>
                     </div>
                     <div class="info-group mt-10" style="width: 50%;">
                         <label>Hypertension Status:</label>
-                        <span id="hypertension">{% if (patient.hypertension == 1) %}Yes{% else %}No{% endif %}</span>
+                        <span id="hypertension">{% if patient.hypertension == 1 %}Yes{% else %}No{% endif %}</span>
                     </div>
                 </div>
-                <div class="display: flex;">
+                <div class="display-flex">
                     <div class="info-group mt-10" style="width: 50%;">
                         <label>Diabetes Status:</label>
-                        <span id="diabetes">{% if (patient.diabetes == 1) %}Yes{% else %}No{% endif %}</span>
+                        <span id="diabetes">{% if patient.diabetes == 1 %}Yes{% else %}No{% endif %}</span>
                     </div>
                     <div class="info-group mt-10" style="width: 50%;">
                         <label>Smoking History Status:</label>
-                        <span id="smoking_history">{% if (patient.smoking_history == 1) %}Yes{% else %}No{% endif %}</span>
+                        <span id="smoking_history">{% if patient.smoking_history == 1 %}Yes{% else %}No{% endif %}</span>
                     </div>
                 </div>
                 {% endif %}
@@ -123,8 +543,6 @@
 
         <!-- Recent Readings Table -->
         <div class="card" id="recent-readings">
-            <script>initializePatientCharts({{ ((patient.highest_reading_asymmetry_index*100)+1) | round(2) }});</script>
-
             <div class="card-header">
                 <h2 class="card-title">Recent Readings</h2>
                 <i class="fas fa-table card-icon"></i>
@@ -140,25 +558,38 @@
                 </tr>
                 </thead>
                 <tbody id="readingsTable">
-                <!-- Data populated by JavaScript -->
-
+                {% if readings and readings|length > 0 %}
                 {% for reading in readings %}
                 <tr>
-                    <td>{{ reading.timestamp }}</td>
-                    <td>{{ (reading.left_sensory_score) | round(4) }}</td>
-                    <td>{{ (reading.right_sensory_score) | round(4) }}</td>
-                    <td><strong>{{ (reading.asymmetry_index*100) | round(4) }}</strong></td>
+                    <td>{{ reading.timestamp.strftime('%Y-%m-%d %H:%M') if reading.timestamp else 'N/A' }}</td>
+                    <td>{{ reading.left_sensory_score | round(2) if reading.left_sensory_score else '0.0' }}</td>
+                    <td>{{ reading.right_sensory_score | round(2) if reading.right_sensory_score else '0.0' }}</td>
+                    <td><strong>
+                        {% if reading.asymmetry_index is defined %}
+                        {{ (reading.asymmetry_index * 100) | round(2) }}
+                        {% else %}
+                        0.0
+                        {% endif %}
+                        %</strong></td>
                     <td><span class="table-badge status-{% if reading.risk_label == 'Critical' %}critical{% elif reading.risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}">
-                        {{ reading.risk_label }}
+                        {{ reading.risk_label if reading.risk_label else 'Normal' }}
                     </span></td>
                 </tr>
-                <script>updatePatientChart('{{ reading.timestamp }}',{{ (reading.asymmetry_index*100) | round(4) }});</script>
                 {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center" style="padding: 20px; color: var(--text-light);">
+                        No readings available
+                    </td>
+                </tr>
+                {% endif %}
                 </tbody>
             </table>
-            <button class="btn btn-view mt-10" onclick="loadMoreReadings()">
-                <i class="fas fa-sync-alt"></i> Load More
-            </button>
+            <div class="text-center mt-10">
+                <button class="btn btn-view" onclick="loadMoreReadings()">
+                    <i class="fas fa-sync-alt"></i> Load More
+                </button>
+            </div>
         </div>
 
         <!-- Alert History -->
@@ -168,22 +599,26 @@
                 <i class="fas fa-exclamation-triangle card-icon"></i>
             </div>
             <ul class="alert-list" id="alertList">
-                <!-- Alerts populated by JavaScript -->
-
+                {% if notifs %}
                 {% for notif in notifs %}
                 {% if notif.type == 'Critical' %}
                 <li class="alert-item critical">
                     <div>
-                        <strong>{{ notif.message }}</strong>
-                        <div class="alert-time">{{ notif.timestamp }}</div>
+                        <strong>{{ notif.message if notif.message else 'Critical Alert' }}</strong>
+                        <div class="alert-time">{{ notif.timestamp.strftime('%Y-%m-%d %H:%M') if notif.timestamp else 'N/A' }}</div>
                     </div>
                     <i class="fas fa-chevron-right"></i>
                 </li>
                 {% endif %}
                 {% endfor %}
+                {% else %}
+                <li class="text-center" style="padding: 20px; color: var(--text-light);">
+                    No alerts
+                </li>
+                {% endif %}
             </ul>
             <div class="text-center mt-10">
-                <button class="btn btn-view">
+                <button class="btn btn-view" onclick="showNotifications()">
                     View All Alerts
                 </button>
             </div>
@@ -198,23 +633,50 @@
             <div class="progress-grid">
                 <div class="progress-item">
                     <i class="fas fa-check-circle fa-2x" style="color: var(--success-green);"></i>
-                    <div class="progress-value" id="completedReadings">6</div>
-                    <div>Completed Today</div>
+                    <div class="progress-value" id="completedReadings">
+                        {{ readings|length if readings else 0 }}
+                    </div>
+                    <div>Total Readings</div>
                 </div>
                 <div class="progress-item">
                     <i class="fas fa-percentage fa-2x" style="color: var(--primary-blue);"></i>
-                    <div class="progress-value" id="complianceRate">75%</div>
-                    <div>Compliance Rate</div>
+                    <div class="progress-value" id="complianceRate">
+                        {% if readings and readings|length > 0 %}
+                        {% set normal_count = readings|selectattr('risk_label', 'equalto', 'Normal')|list|length %}
+                        {{ ((normal_count / readings|length) * 100)|round|int }}%
+                        {% else %}
+                        0%
+                        {% endif %}
+                    </div>
+                    <div>Normal Rate</div>
                 </div>
                 <div class="progress-item">
                     <i class="fas fa-star fa-2x" style="color: var(--warning-yellow);"></i>
-                    <div class="progress-value" id="bestScore">8%</div>
-                    <div>Best Score Today</div>
+                    <div class="progress-value" id="bestScore">
+                        {% if readings and readings|selectattr('asymmetry_index')|list|length > 0 %}
+                        {{ (readings|map(attribute='asymmetry_index')|min * 100)|round(2) }}%
+                        {% else %}
+                        0%
+                        {% endif %}
+                    </div>
+                    <div>Best Score</div>
                 </div>
                 <div class="progress-item">
                     <i class="fas fa-user-md fa-2x" style="color: var(--primary-blue);"></i>
-                    <h4>{{ patient.doctor_title }}. {{ patient.doctor_first_name }} {{ patient.doctor_last_name }}</h4>
-                    <div class="mt-10" id="lastNote">"Good progress this week"</div>
+                    <h4>
+                        {% if patient.doctor_first_name %}
+                        Dr. {{ patient.doctor_first_name }} {{ patient.doctor_last_name }}
+                        {% else %}
+                        Not Assigned
+                        {% endif %}
+                    </h4>
+                    <div class="mt-10" id="lastNote">
+                        {% if patient.doctor_first_name %}
+                        "Monitoring your progress"
+                        {% else %}
+                        "No doctor assigned yet"
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -223,10 +685,12 @@
     {% if session.get('role') == 'DOCTOR' %}
     <form class="notes-section" action="/api/patient/{{patient.id}}/note" method="POST">
         <h3>Doctor's Notes</h3>
-        <textarea class="notes-input" name="notes" id="doctorNotes" placeholder="Add your notes here...">{{ patient.notes }}</textarea>
-        <button class="btn btn-view" type="submit">
-            <i class="fas fa-save"></i> Save Notes
-        </button>
+        <textarea class="notes-input" name="notes" id="doctorNotes" placeholder="Add your notes here...">{{ patient.notes if patient.notes else '' }}</textarea>
+        <div class="text-center">
+            <button class="btn btn-view" type="submit">
+                <i class="fas fa-save"></i> Save Notes
+            </button>
+        </div>
     </form>
     {% endif %}
 </div>
@@ -239,18 +703,23 @@
             <button class="modal-close" onclick="document.getElementById('notificationModal').style.display = 'none';">&times;</button>
         </div>
         <div class="p-20" id="notificationContent">
-            <!-- Notifications loaded here -->
-
+            {% if notifs %}
             {% for notif in notifs %}
-            <div class="alert-item {{ notif.type }}">
-                <strong>{{ notif.title }}</strong>
-                <p>{{ notif.message }}</p>
-                <div class="alert-time">{{ notif.timestamp }}</div>
+            <div class="alert-item {{ notif.type|lower if notif.type else 'info' }}">
+                <strong>{{ notif.title if notif.title else 'Notification' }}</strong>
+                <p>{{ notif.message if notif.message else 'No message' }}</p>
+                <div class="alert-time">{{ notif.timestamp.strftime('%Y-%m-%d %H:%M') if notif.timestamp else 'N/A' }}</div>
             </div>
             {% endfor %}
+            {% else %}
+            <div class="text-center">
+                <i class="fas fa-bell-slash fa-3x" style="color: var(--text-light); margin: 20px 0;"></i>
+                <p>No notifications</p>
+            </div>
+            {% endif %}
 
             <div class="text-center mt-20">
-                <button class="btn" onclick="clearAllNotifications()" style="background: #6C757D; color: white;">
+                <button class="btn" onclick="clearAllNotifications()" style="background: var(--dark-gray); color: white;">
                     Clear All Notifications
                 </button>
             </div>
@@ -258,29 +727,158 @@
     </div>
 </div>
 
+<!-- Mobile Navigation Menu -->
+<div class="mobile-nav" id="mobileNav">
+    <a href="/dashboard/patient" class="mobile-nav-item" onclick="closeMobileNav()">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+    </a>
+    <a href="/predict-form" class="mobile-nav-item" onclick="closeMobileNav()">
+        <i class="fas fa-brain"></i>
+        <span>Predict</span>
+    </a>
+    <a href="#" class="mobile-nav-item" onclick="showNotifications(); closeMobileNav();">
+        <i class="fas fa-bell"></i>
+        <span>Alerts</span>
+        <span class="mobile-badge" id="mobileNotificationCount">{{ notifs|length if notifs else 0 }}</span>
+    </a>
+    <a href="/logout" class="mobile-nav-item" onclick="closeMobileNav()">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Logout</span>
+    </a>
+</div>
+
+<!-- Mobile Menu Toggle -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle">
+    <i class="fas fa-bars"></i>
+</button>
+
 <!-- Scripts -->
 <script>
     // ===== PATIENT DASHBOARD FUNCTIONS =====
+
+    // Initialize charts
+    let asymmetryChart;
+
+    function initializePatientCharts() {
+        const ctx = document.getElementById('asymmetryChart').getContext('2d');
+
+        // Collect existing data from the table
+        const rows = document.querySelectorAll('#readingsTable tr');
+        const labels = [];
+        const data = [];
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 5) {
+                const time = cells[0].textContent.trim();
+                const asymmetryText = cells[3].querySelector('strong')?.textContent.trim() || '0';
+                const asymmetryValue = parseFloat(asymmetryText.replace('%', ''));
+
+                if (!isNaN(asymmetryValue)) {
+                    labels.push(time);
+                    data.push(asymmetryValue);
+                }
+            }
+        });
+
+        asymmetryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels.slice(-7).reverse(), // Last 7 readings
+                datasets: [{
+                    label: 'Asymmetry %',
+                    data: data.slice(-7).reverse(),
+                    borderColor: 'rgba(46, 90, 172, 1)',
+                    backgroundColor: 'rgba(46, 90, 172, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Critical Threshold',
+                    data: Array(labels.slice(-7).length).fill(20),
+                    borderColor: 'rgba(220, 53, 69, 0.5)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: Math.max(...data, 25),
+                        title: {
+                            display: true,
+                            text: 'Asymmetry %'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    }
+
+    function updatePatientChart(label, value) {
+        if (!asymmetryChart) return;
+
+        // Add new data point
+        asymmetryChart.data.labels.push(label);
+        asymmetryChart.data.datasets[0].data.push(value);
+
+        // Update threshold line
+        const thresholdData = [];
+        for (let i = 0; i < asymmetryChart.data.labels.length; i++) {
+            thresholdData.push(20);
+        }
+        asymmetryChart.data.datasets[1].data = thresholdData;
+
+        // Keep only last 7 data points
+        if (asymmetryChart.data.labels.length > 7) {
+            asymmetryChart.data.labels.shift();
+            asymmetryChart.data.datasets[0].data.shift();
+            asymmetryChart.data.datasets[1].data.shift();
+        }
+
+        asymmetryChart.update();
+    }
 
     // Update status indicator based on asymmetry percentage
     function updateStatusIndicator(asymmetry) {
         const statusBadge = document.getElementById('statusIndicator');
         const percentageElement = document.getElementById('currentAsymmetry');
+        const currentStatusBadge = document.getElementById('currentStatusBadge');
 
         let status, colorClass, text;
 
         if (asymmetry > 20) {
             status = 'critical';
             colorClass = 'percentage-critical';
-            text = 'Critical (> 20%)';
-        } else if (asymmetry > 15) {
+            text = 'Critical';
+        } else if (asymmetry >= 15) {
             status = 'borderline';
             colorClass = 'percentage-borderline';
-            text = 'Borderline (15-20%)';
+            text = 'Borderline';
         } else {
             status = 'normal';
             colorClass = 'percentage-normal';
-            text = 'Normal (< 15%)';
+            text = 'Normal';
         }
 
         // Update badge
@@ -289,14 +887,20 @@
 
         // Update percentage color
         percentageElement.className = `asymmetry-percentage ${colorClass}`;
+        percentageElement.textContent = asymmetry.toFixed(1) + '%';
 
         // Update current status in header
-        document.getElementById('currentStatusBadge').className = `status-indicator status-${status}`;
-        document.getElementById('currentStatusBadge').textContent = text.split(' ')[0];
+        currentStatusBadge.className = `status-indicator status-${status}`;
+        currentStatusBadge.textContent = text;
     }
-    // Populate readings table
+
+    // Add new reading to table
     function addNewReading(reading) {
         const tableBody = document.getElementById('readingsTable');
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const dateString = now.toLocaleDateString();
+
         let statusClass, statusText;
         if (reading.asymmetry > 20) {
             statusClass = 'status-critical';
@@ -308,167 +912,289 @@
             statusClass = 'status-normal';
             statusText = 'Normal';
         }
-        tableBody.insertAdjacentHTML('afterbegin',
-            `<tr>
-                <td>${reading.time}</td>
+
+        const newRow = `
+            <tr>
+                <td>${dateString} ${timeString}</td>
                 <td>${reading.left}</td>
                 <td>${reading.right}</td>
-                <td><strong>${reading.asymmetry}%</strong></td>
+                <td><strong>${reading.asymmetry.toFixed(1)}%</strong></td>
                 <td><span class="table-badge ${statusClass}">${statusText}</span></td>
-            </tr>`);
+            </tr>
+        `;
+
+        // Add to top of table
+        tableBody.insertAdjacentHTML('afterbegin', newRow);
+
+        // Update chart
+        updatePatientChart(timeString, reading.asymmetry);
+
+        // Update current status
+        updateStatusIndicator(reading.asymmetry);
+
+        // Update last reading time
+        document.getElementById('lastReadingTime').textContent = `${dateString} ${timeString}`;
+
+        // Update completed readings count
+        const completedCount = document.getElementById('completedReadings');
+        completedCount.textContent = parseInt(completedCount.textContent) + 1;
+
+        // Update best score if better
+        const bestScore = parseFloat(document.getElementById('bestScore').textContent);
+        if (reading.asymmetry < bestScore) {
+            document.getElementById('bestScore').textContent = reading.asymmetry.toFixed(1) + '%';
+        }
+
+        // Check for alert
+        if (reading.asymmetry > 20) {
+            addNewAlert(reading.asymmetry, `${dateString} ${timeString}`);
+            showToastNotification(`Critical alert: Asymmetry reached ${reading.asymmetry.toFixed(1)}%`, 'error');
+        }
+
+        return newRow;
     }
+
     // Add alert
     function addNewAlert(asymmetry, time) {
         const alertList = document.getElementById('alertList');
-        const alertItem = document.createElement('li');
-        alertItem.className = 'alert-item critical';
-        alertItem.innerHTML = `
-                    <div>
-                        <strong>Live Alert: Asymmetry reached ${asymmetry}%</strong>
-                        <div class="alert-time">${time}</div>
-                    </div>
-                    <i class="fas fa-chevron-right"></i>
-                `;
-        alertList.insertAdjacentHTML('afterbegin', alertItem.outerHTML);
+        const notificationCount = document.getElementById('notificationCount');
+        const mobileNotificationCount = document.getElementById('mobileNotificationCount');
+
+        const newAlert = `
+            <li class="alert-item critical">
+                <div>
+                    <strong>Alert: Asymmetry reached ${asymmetry.toFixed(1)}%</strong>
+                    <div class="alert-time">${time}</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </li>
+        `;
+
+        // Add to top of list
+        if (alertList.children.length > 0) {
+            alertList.insertAdjacentHTML('afterbegin', newAlert);
+        } else {
+            alertList.innerHTML = newAlert;
+        }
+
+        // Update notification counts
+        const currentCount = parseInt(notificationCount.textContent) + 1;
+        notificationCount.textContent = currentCount;
+        mobileNotificationCount.textContent = currentCount;
+
+        // Add to notification modal
+        const notificationContent = document.getElementById('notificationContent');
+        const notificationItem = `
+            <div class="alert-item critical">
+                <strong>Asymmetry Alert</strong>
+                <p>Asymmetry reached ${asymmetry.toFixed(1)}%</p>
+                <div class="alert-time">${time}</div>
+            </div>
+        `;
+
+        const existingContent = notificationContent.innerHTML;
+        if (existingContent.includes('No notifications')) {
+            notificationContent.innerHTML = notificationItem;
+        } else {
+            notificationContent.insertAdjacentHTML('afterbegin', notificationItem);
+        }
     }
-
-
 
     // Show notification modal
     function showNotifications() {
         const modal = document.getElementById('notificationModal');
         modal.style.display = 'flex';
     }
+
     // Clear notifications
     function clearAllNotifications() {
         document.getElementById('notificationCount').textContent = '0';
-        document.getElementById('alertList').innerHTML = '<li>No alerts to show</li>';
+        document.getElementById('mobileNotificationCount').textContent = '0';
+        document.getElementById('alertList').innerHTML = '<li class="text-center" style="padding: 20px; color: var(--text-light);">No alerts</li>';
+        document.getElementById('notificationContent').innerHTML = `
+            <div class="text-center">
+                <i class="fas fa-bell-slash fa-3x" style="color: var(--text-light); margin: 20px 0;"></i>
+                <p>No notifications</p>
+            </div>
+        `;
         document.getElementById('notificationModal').style.display = 'none';
     }
 
+    // Load more readings
+    function loadMoreReadings() {
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        btn.disabled = true;
 
-
-
-
-    // Simulate live data updates
-    function simulateLiveData() {
-        // Simulate new reading every 15 seconds
-        const randomAsymmetry = Math.floor(Math.random() * 30);
-        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-        // Update current asymmetry
-        document.getElementById('currentAsymmetry').textContent = randomAsymmetry + '%';
-        updateStatusIndicator(randomAsymmetry);
-
-        // Update chart if it exists
-        if (window.updatePatientChart) {
-            updatePatientChart(randomAsymmetry);
-        }
-
-        // Add alert if asymmetry > 20%
-        if (randomAsymmetry > 20) {
-            const alertList = document.getElementById('alertList');
-            const alertItem = document.createElement('li');
-            alertItem.className = 'alert-item critical';
-            alertItem.innerHTML = `
-                    <div>
-                        <strong>Live Alert: Asymmetry reached ${randomAsymmetry}%</strong>
-                        <div class="alert-time">${time}</div>
-                    </div>
-                    <i class="fas fa-chevron-right"></i>
-                `;
-
-            // Add to top
-            if (alertList.firstChild) {
-                alertList.insertBefore(alertItem, alertList.firstChild);
-            }
-
-            // Update notification count
-            const count = parseInt(document.getElementById('notificationCount').textContent) + 1;
-            document.getElementById('notificationCount').textContent = count;
-        }
+        // Simulate API call
+        setTimeout(() => {
+            showToastNotification('No more readings available', 'info');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 1000);
     }
 
-    // Show live notification
-    function showToastNotification(message) {
-        // Create toast notification
+    // Show toast notification
+    function showToastNotification(message, type = 'info') {
+        const colors = {
+            success: 'var(--success-green)',
+            warning: 'var(--warning-yellow)',
+            error: 'var(--danger-red)',
+            info: 'var(--primary-blue)'
+        };
+
+        const icons = {
+            success: 'fa-check-circle',
+            warning: 'fa-exclamation-triangle',
+            error: 'fa-exclamation-circle',
+            info: 'fa-info-circle'
+        };
+
+        // Create toast
         const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
         toast.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: var(--danger-red);
-                color: white;
-                padding: 15px 20px;
-                border-radius: 5px;
-                z-index: 9999;
-                box-shadow: var(--shadow-lg);
-                animation: slideIn 0.3s ease;
-            `;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: ${colors[type]};
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease;
+            max-width: 300px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        `;
 
         toast.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-exclamation-circle fa-lg"></i>
-                    <div>${message}</div>
-                </div>
-            `;
+            <i class="fas ${icons[type]} fa-lg"></i>
+            <div>${message}</div>
+        `;
 
         document.body.appendChild(toast);
 
         // Auto-remove after 5 seconds
         setTimeout(() => {
-            if (toast.parentElement) {
-                toast.remove();
-            }
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
         }, 5000);
     }
 
-    // Error handler
-    function showToastError(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: var(--danger-red);
-                color: white;
-                padding: 15px 20px;
-                border-radius: 5px;
-                z-index: 9999;
-            `;
-        errorDiv.textContent = message;
-        document.body.appendChild(errorDiv);
+    // Save reading to server
+    function saveReadingToServer(leftScore, rightScore, asymmetry) {
+        const readingData = {
+            left_sensory_score: leftScore,
+            right_sensory_score: rightScore,
+            asymmetry_index: asymmetry / 100,
+            timestamp: new Date().toISOString()
+        };
 
-        setTimeout(() => errorDiv.remove(), 5000);
+        // Send to server
+        fetch('/api/save-reading', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(readingData)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('Reading saved to server:', data);
+                } else {
+                    console.error('Server error:', data.error);
+                    showToastNotification('Failed to save reading to server', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToastNotification('Network error: Reading saved locally only', 'warning');
+            });
     }
 
-    // Logout function
-    function logout() {
-        if (confirm("Are you sure you want to logout?")) {
-            // In real app, this would clear session and redirect
-            alert("Redirecting to login page...");
-            // window.location.href = 'login.html';
+    // Mobile navigation functions
+    function closeMobileNav() {
+        document.getElementById('mobileNav').classList.remove('active');
+        document.getElementById('mobileMenuToggle').classList.remove('active');
+    }
+
+    // Mobile menu toggle
+    document.getElementById('mobileMenuToggle').addEventListener('click', function() {
+        const mobileNav = document.getElementById('mobileNav');
+        mobileNav.classList.toggle('active');
+        this.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(event) {
+        const mobileNav = document.getElementById('mobileNav');
+        const toggleBtn = document.getElementById('mobileMenuToggle');
+
+        if (!mobileNav.contains(event.target) && !toggleBtn.contains(event.target)) {
+            closeMobileNav();
         }
-    }
+    });
 
-    function checkForNewData() {
-        let found = false;
-        if (found) {
-            let lastest_asymmetry = 0;
-            updateStatusIndicator(lastest_asymmetry);
-            addNewReading(null);
-            updatePatientChart(0);
-            if (lastest_asymmetry > 20) {
-                showToastNotification(`Critical: Asymmetry reached ${lastest_asymmetry}%`);
-                addNewAlert(lastest_asymmetry, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize charts
+        initializePatientCharts();
+
+        // Update mobile notification count
+        document.getElementById('mobileNotificationCount').textContent =
+            document.getElementById('notificationCount').textContent;
+
+        // Update current status from initial data
+        const currentAsymmetryElement = document.getElementById('currentAsymmetry');
+        if (currentAsymmetryElement) {
+            const asymmetryText = currentAsymmetryElement.textContent.replace('%', '').trim();
+            const asymmetryValue = parseFloat(asymmetryText);
+            if (!isNaN(asymmetryValue)) {
+                updateStatusIndicator(asymmetryValue);
             }
         }
+
+        // Set up periodic data check (every 30 seconds)
+        setInterval(checkForNewData, 30000);
+
+
+    });
+
+    // Check for new data
+    function checkForNewData() {
+        // This would be replaced with actual API call
+        console.log('Checking for new data...');
     }
 
-    setInterval(checkForNewData, 15000);
-</script>
-<script>
+    // Error handler
+    function showError(message) {
+        showToastNotification(message, 'error');
+    }
 
+    // Logout confirmation
+    document.querySelector('.logout-btn').addEventListener('click', function(e) {
+        if (!confirm("Are you sure you want to logout?")) {
+            e.preventDefault();
+        }
+    });
 </script>
+
+
+
 </body>
 </html>

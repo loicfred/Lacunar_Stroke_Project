@@ -3,8 +3,8 @@ Main Flask App for Lacunar Stroke Detection
 Green: This is the foundation. Other members add to marked sections.
 """
 import logging
-import time
 
+from datetime import datetime
 import model.database as dbmanager
 from model.sample.PatientDetails import PatientDetails
 
@@ -272,46 +272,119 @@ def api_add_sample_patients(amount):
         })
 
 
-@app.route('/api/predict', methods=['POST']) # Send patient's data to return a prediction.
+@app.route('/predict-form')
+def predict_form():
+    """Show the dedicated prediction form for logged-in patients"""
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    # Check if user is a patient (user in database = patient in your system)
+    role = session.get('role', '').lower()
+
+    if role != 'user':  # Changed from 'PATIENT' to 'user'
+        if role == 'doctor':
+            return redirect('/dashboard/doctor')
+        else:
+            return redirect('/')
+
+    # Get patient info for the form
+    user_id = session['user_id']
+    patient_info = dbmanager.getByID('patient_info', user_id)
+
+    patient_name = ""
+    if patient_info:
+        if hasattr(patient_info, 'first_name') and patient_info.first_name:
+            patient_name = patient_info.first_name
+            if hasattr(patient_info, 'last_name') and patient_info.last_name:
+                patient_name += f" {patient_info.last_name}"
+
+    return render_template('predict_form.html',
+                           patient_name=patient_name,
+                           model_loaded=model is not None)
+
+@app.route('/api/predict', methods=['POST'])
 def api_predict_stroke():
     try:
-        # 1. Check for incoming data
-        if not request.values:
-            return jsonify({
-                "success": False,
-                "error": "No patient data provided"
-            }), 400
+        # 1. Check if user is logged in
+        if 'user_id' not in session:
+            return render_template('error.html',
+                                   error="Please login first to use the prediction system.",
+                                   redirect_url="/login"), 401
 
-        # 2. Reconstruct Patient Details from form/request
-        # We try to get an ID; if it's a new patient, we use a temporary timestamp-based ID
-        patient_id = int(request.values.get("patient_id", int(time.time())))
+        user_id = session['user_id']
+        user_role = session.get('role', 'user').lower()  # Default to 'user'
 
+        # 2. Get patient info from database (for default values if form doesn't provide)
+        patient_info = dbmanager.getByID('patient_info', user_id)
+        if not patient_info:
+            return render_template('error.html',
+                                   error="Patient information not found. Please contact support.",
+                                   redirect_url="/"), 404
+
+        # 3. Extract Sensory Scores AND Health Factors from form
+        left_score_str = request.form.get("left_asymmetry", "5.0")
+        right_score_str = request.form.get("right_asymmetry", "5.0")
+
+        # Get health factors from form (for test cases - priority over database)
+        hypertension_form = request.form.get("hypertension", None)
+        diabetes_form = request.form.get("diabetes", None)
+        smoking_form = request.form.get("smoking", None)
+
+        # Get demographic info from form (for test cases)
+        age_group_form = request.form.get("age_group", None)
+        sex_form = request.form.get("sex", None)
+
+        # Convert sensory scores to float with error handling
+        try:
+            left_score = float(left_score_str)
+        except ValueError:
+            left_score = 5.0  # Default value
+
+        try:
+            right_score = float(right_score_str)
+        except ValueError:
+            right_score = 5.0  # Default value
+
+        # 4. Determine health factor values (form takes priority, then database)
+        if hypertension_form is not None:
+            try:
+                hypertension_val = int(hypertension_form)
+            except:
+                hypertension_val = int(getattr(patient_info, 'hypertension', 0))
+        else:
+            hypertension_val = int(getattr(patient_info, 'hypertension', 0))
+
+        if diabetes_form is not None:
+            try:
+                diabetes_val = int(diabetes_form)
+            except:
+                diabetes_val = int(getattr(patient_info, 'diabetes', 0))
+        else:
+            diabetes_val = int(getattr(patient_info, 'diabetes', 0))
+
+        if smoking_form is not None:
+            try:
+                smoking_val = int(smoking_form)
+            except:
+                smoking_val = int(getattr(patient_info, 'smoking_history', 0))
+        else:
+            smoking_val = int(getattr(patient_info, 'smoking_history', 0))
+
+        # Determine age and sex (form takes priority)
+        age_val = age_group_form if age_group_form else getattr(patient_info, 'age', '50-59')
+        sex_val = sex_form if sex_form else getattr(patient_info, 'sex', 'Male')
+
+        # 5. Create PatientDetails object USING FORM DATA for test cases
         new_patient_details = PatientDetails(
-            patient_id,
-            request.values["age"],
-            request.values["sex"],
-            int(request.values["hypertension"]),
-            int(request.values["diabetes"]),
-            int(request.values["smoking"])
+            user_id,
+            age_val,          # From form or database
+            sex_val,          # From form or database
+            hypertension_val,  # Use form value for test cases
+            diabetes_val,      # Use form value for test cases
+            smoking_val        # Use form value for test cases
         )
 
-        # 3. Extract Sensory Scores
-        left_score = float(request.values["left_asymmetry"])
-        right_score = float(request.values["right_asymmetry"])
-
-        # 4. FETCH BASELINE & VELOCITY: Historical Context from database.py
-        # This allows us to see if the current score is a sudden drop
-        from model.database import get_patient_baseline, get_reading_velocity
-        baseline = get_patient_baseline(patient_id)
-        l_vel, r_vel, t_delta = get_reading_velocity(patient_id)
-
-        # Determine the worst velocity (largest drop)
-        current_velocity = min(l_vel, r_vel)
-
-        # 5. Determine Affected Side (Initial Logic)
-        asymmetry_detected = abs(left_score - right_score) > 2.0
-        asymmetry_label = 1 if asymmetry_detected else 0
-
+        # 6. Determine affected side
         if left_score < right_score - 0.5:
             affected_side = "Left"
         elif right_score < left_score - 0.5:
@@ -319,8 +392,15 @@ def api_predict_stroke():
         else:
             affected_side = "None"
 
-        # 6. Create SensoryDetails and Patient Object
-        # We pass the calculated velocity into the sensory object
+        asymmetry_label = 1 if abs(left_score - right_score) > 2.0 else 0
+
+        # 7. Get baseline and velocity
+        from model.database import get_patient_baseline, get_reading_velocity
+        baseline = get_patient_baseline(user_id)
+        l_vel, r_vel, t_delta = get_reading_velocity(user_id)
+        current_velocity = min(l_vel, r_vel) if l_vel and r_vel else 0.0
+
+        # 8. Create SensoryDetails with velocity
         new_sensory = SensoryDetails(
             left_score,
             right_score,
@@ -329,38 +409,89 @@ def api_predict_stroke():
             score_velocity=current_velocity
         )
 
-        # Create the unified patient object
+        # 9. Create Patient object
         patient = Patient.create(new_patient_details, new_sensory)
 
-        # 7. Add context data for the prediction function
-        patient_dict = patient.__dict__
-        patient_dict['baseline'] = baseline # Pass baseline for cliff-edge check
-        patient_dict['id'] = patient_id
+        # 10. Save reading to database
+        from model.db.Reading import Reading
+        from datetime import datetime
 
-        # 8. EXECUTE PREDICTION: Calls ML model with Velocity and Baseline context
+        reading = Reading(
+            patient_id=user_id,
+            timestamp=datetime.now(),
+            left_sensory_score=float(left_score),  # Ensure float
+            right_sensory_score=float(right_score)  # Ensure float
+        )
+        reading_id = dbmanager.insert('reading', reading)
+
+        # 11. Prepare data for prediction
+        patient_dict = patient.__dict__
+        patient_dict['baseline'] = baseline
+        patient_dict['id'] = user_id
+        patient_dict['score_velocity'] = current_velocity
+        patient_dict['hypertension'] = hypertension_val  # Use the determined value
+        patient_dict['diabetes'] = diabetes_val          # Use the determined value
+        patient_dict['smoking'] = smoking_val            # Use the determined value
+
+        # 12. Execute prediction
         prediction = predict_stroke(patient_dict)
 
-        # 9. Add metadata for the UI
+        # 13. Add metadata
+        prediction["reading_id"] = reading_id
         prediction["model_loaded"] = model is not None
         prediction["velocity_detected"] = current_velocity
         prediction["time_since_last_reading"] = t_delta
 
-        # Construct final response
-        data = jsonify({
+        # Add clinical category for template
+        prediction["clinical_category"] = "Unilateral" if prediction.get("affected_side") in ["Left", "Right"] \
+            else "Bilateral" if prediction.get("affected_side") == "Bilateral (Both Sides)" \
+            else "Normal"
+
+        # Add prediction_label for template
+        prediction["prediction_label"] = prediction.get("sensory_response", "Unknown")
+
+        # 14. Get patient name
+        patient_name = ""
+        if hasattr(patient_info, 'first_name') and patient_info.first_name:
+            patient_name = patient_info.first_name
+            if hasattr(patient_info, 'last_name') and patient_info.last_name:
+                patient_name += f" {patient_info.last_name}"
+
+        # 15. Prepare response data
+        response_data = {
             "success": True,
             "prediction": prediction,
-            "received_data": patient_dict,
-            "model_status": "loaded" if model is not None else "not_loaded"
-        }).json
+            "patient": {
+                "id": user_id,
+                "name": patient_name,
+                "age": age_val,
+                "sex": sex_val
+            },
+            "sensory_scores": {
+                "left": left_score,
+                "right": right_score,
+                "asymmetry": round(abs(left_score - right_score), 2)
+            },
+            "health_factors": {
+                "hypertension": bool(hypertension_val),
+                "diabetes": bool(diabetes_val),
+                "smoking": bool(smoking_val)
+            },
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "model_used": "ML Model" if model is not None else "Threshold Analysis",
+            "reading_id": reading_id
+        }
 
-        print(f"📊 Prediction Result for Patient {patient_id}: {prediction['sensory_response']}")
-
-        return render_template('result.html', data=data, model_loaded=model is not None)
+        return render_template('result.html',
+                               data=response_data,
+                               model_loaded=model is not None)
 
     except Exception as ex:
         import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(ex)}), 500
+        traceback.print_exc()  # This will print full traceback to console
+        return render_template('error.html',
+                               error=f"Prediction error: {str(ex)}",
+                               redirect_url="/"), 500
 
 
 def get_dashboard_stats():
@@ -396,6 +527,62 @@ def get_dashboard_stats():
         "risk_distribution": risk_distribution,
         "model_loaded": model is not None
     }
+
+@app.route('/api/save-reading', methods=['POST'])
+def save_reading():
+    try:
+        if 'user_id' not in session:
+            return jsonify({"success": False, "error": "Not logged in"}), 401
+
+        data = request.json
+        patient_id = session['user_id']
+
+        # Create Reading object
+        from model.db.Reading import Reading
+        from datetime import datetime
+
+        reading = Reading(
+            patient_id=patient_id,
+            timestamp=datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00')),
+            left_sensory_score=float(data['left_sensory_score']),
+            right_sensory_score=float(data['right_sensory_score'])
+        )
+
+        # Save to database
+        reading_id = dbmanager.insert('reading', reading)
+
+        # Trigger prediction (optional)
+        patient_data = {
+            "id": patient_id,
+            "left_sensory_score": float(data['left_sensory_score']),
+            "right_sensory_score": float(data['right_sensory_score'])
+        }
+
+        # Get additional patient info if needed
+        patient_info = dbmanager.getByID('patient_info', patient_id)
+        if patient_info:
+            patient_data.update({
+                "age": getattr(patient_info, 'age', '50-59'),
+                "sex": getattr(patient_info, 'sex', 'Male'),
+                "hypertension": int(getattr(patient_info, 'hypertension', 0)),
+                "diabetes": int(getattr(patient_info, 'diabetes', 0)),
+                "smoking": int(getattr(patient_info, 'smoking_history', 0))
+            })
+
+        prediction = predict_stroke(patient_data)
+
+        return jsonify({
+            "success": True,
+            "reading_id": reading_id,
+            "prediction": prediction,
+            "message": "Reading saved successfully"
+        })
+
+    except Exception as ex:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(ex)}), 500
+
 @app.route('/api/dashboard', methods=['GET']) # To get the average statistics of the sample data.
 def api_get_dashboard_stats(): # The statistics of the dashboard. for example: percentages
     return jsonify({
@@ -434,9 +621,16 @@ def api_model_test():
 
 # ========== CONTROLLER PAGE ==========
 
-@app.route('/') # Redirect url to the home page
+@app.route('/')
 def home():
+    """Redirect to appropriate dashboard if logged in"""
+    if 'user_id' in session:
+        if session.get('role') == 'DOCTOR':
+            return redirect('/dashboard/doctor')
+        else:
+            return redirect('/dashboard/patient')
     return render_template('index.html', model_loaded=model is not None)
+
 
 # Replace your current login/register routes with:
 @app.route('/login', methods=['GET', 'POST'])
@@ -491,42 +685,317 @@ def doctor_dashboard():
 
 @app.route('/exception-report')
 def exception_report():
+    """
+    Exception report for doctors - shows patients with abnormal readings
+    """
     try:
         if 'user_id' not in session or session['role'] != 'DOCTOR':
             return redirect('/login')
-        exception_list = dbmanager.getAll('exception_report')
-        critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical') if exception_list else 0
-        borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline') if exception_list else 0
-        normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal') if exception_list else 0
 
-        avg_asym = round(sum(exception.highest_reading_asymmetry_index for exception in exception_list) / len(exception_list) * 100, 2)
-        if not avg_asym: avg_asym = 0
+        # Get all readings from detailed_reading view
+        all_readings = dbmanager.getAll('detailed_reading')
 
-        filtered_exception_list = [exception for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label in ['Critical', 'Borderline']]
+        # Group readings by patient
+        patient_readings = {}
+        for reading in all_readings:
+            patient_id = reading.patient_id
+            if patient_id not in patient_readings:
+                patient_readings[patient_id] = []
+            patient_readings[patient_id].append(reading)
 
-        return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
-                           model_loaded=model is not None)
+        # Create exception list with latest readings
+        exception_list = []
+        critical_count = 0
+        borderline_count = 0
+        normal_count = 0
+
+        for patient_id, readings in patient_readings.items():
+            if readings:
+                # Sort by timestamp (newest first)
+                readings.sort(key=lambda x: x.timestamp, reverse=True)
+                latest = readings[0]
+
+                # Get patient info
+                patient_info = dbmanager.getByID('patient_info', patient_id)
+                if not patient_info:
+                    continue
+
+                # Calculate average asymmetry for this patient
+                total_asymmetry = sum(float(getattr(r, 'asymmetry_index', 0)) for r in readings)
+                avg_asymmetry = total_asymmetry / len(readings)
+
+                # Find highest asymmetry reading
+                highest_reading = max(readings, key=lambda x: float(getattr(x, 'asymmetry_index', 0)))
+
+                # Create Patient_Report object
+                from model.db.Patient_Report import Patient_Report
+
+                patient_report = Patient_Report(
+                    id=patient_id,
+                    first_name=getattr(patient_info, 'first_name', ''),
+                    last_name=getattr(patient_info, 'last_name', ''),
+                    age=getattr(patient_info, 'age', 'Unknown'),
+                    sex=getattr(patient_info, 'sex', 'Unknown'),
+                    hypertension=int(getattr(patient_info, 'hypertension', 0)),
+                    diabetes=int(getattr(patient_info, 'diabetes', 0)),
+                    smoking_history=int(getattr(patient_info, 'smoking_history', 0)),
+                    latest_reading_timestamp=latest.timestamp,
+                    latest_reading_asymmetry_index=float(getattr(latest, 'asymmetry_index', 0)),
+                    latest_reading_left_score=float(getattr(latest, 'left_sensory_score', 0)),
+                    latest_reading_right_score=float(getattr(latest, 'right_sensory_score', 0)),
+                    avg_asymmetry_index=float(avg_asymmetry),
+                    highest_reading_asymmetry_index=float(getattr(highest_reading, 'asymmetry_index', 0))
+                )
+
+                # Determine risk label based on average
+                if avg_asymmetry > 0.2:
+                    risk_label = 'Critical'
+                    critical_count += 1
+                elif avg_asymmetry > 0.15:
+                    risk_label = 'Borderline'
+                    borderline_count += 1
+                else:
+                    risk_label = 'Normal'
+                    normal_count += 1
+
+                patient_report.avg_risk_label = risk_label
+                patient_report.latest_reading_risk_label = latest.risk_label  # Use from view
+
+                exception_list.append(patient_report)
+
+        # Filter to show only Critical and Borderline cases
+        filtered_exception_list = [
+            exception for exception in exception_list
+            if hasattr(exception, 'avg_risk_label') and
+               exception.avg_risk_label in ['Critical', 'Borderline']
+        ]
+
+        return render_template('exception_report.html',
+                               exception_list=filtered_exception_list,
+                               criticalcount=critical_count,
+                               borderlinecount=borderline_count,
+                               normalcount=normal_count,
+                               model_loaded=model is not None)
+
     except Exception as ex:
-        print(f"Dashboard error: {ex}")
-        return render_template('exception_report.html', error=str(e))
+        print(f"Exception report error: {ex}")
+        import traceback
+        traceback.print_exc()
+        return render_template('exception_report.html',
+                               error=str(ex),
+                               exception_list=[],
+                               criticalcount=0,
+                               borderlinecount=0,
+                               normalcount=0)
 
+@app.route('/dashboard/patient')
+def patient_dashboard():
+    """
+    Default patient dashboard - shows the logged-in patient's own dashboard
+    """
+    try:
+        if 'user_id' not in session:
+            return redirect('/login')
+
+        # Check if user is a patient (user = patient)
+        if session.get('role', '').lower() != 'user':  # Changed here
+            # If doctor, redirect them to their own dashboard
+            if session.get('role', '').lower() == 'doctor':
+                return redirect('/dashboard/doctor')
+            else:
+                return redirect('/login')
+
+        patient_id = session['user_id']
+        return redirect(f'/dashboard/patient/{patient_id}')
+
+    except Exception as ex:
+        print(f"Patient dashboard error: {ex}")
+        return render_template('error.html', error=str(ex))
 
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
+    """
+    View patient dashboard - accessible by both the patient themselves and doctors
+    """
     try:
-        if 'user_id' not in session or (session['role'] != 'DOCTOR' and patient_id != str(session['user_id'])):
+        if 'user_id' not in session:
             return redirect('/login')
-        patient_info = dbmanager.getByID('exception_report', patient_id)
-        readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
-        notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
-        return render_template('dashboard_patient.html',patient=patient_info,readings=readings, notifs=notifs,model_loaded=model is not None)
+
+        user_id = session['user_id']
+        user_role = session.get('role', '').lower()  # Get and lowercase
+
+        # Check access permissions
+        if user_role == 'user' and str(user_id) != str(patient_id):  # Changed here
+            return render_template('error.html',
+                                   error="You don't have permission to view this dashboard",
+                                   redirect_url=f"/dashboard/patient/{user_id}"), 403
+
+        # Get patient basic info
+        patient_basic_info = dbmanager.getByID('patient_info', patient_id)
+
+        if not patient_basic_info:
+            return render_template('error.html',
+                                   error=f"Patient with ID {patient_id} not found",
+                                   redirect_url="/dashboard/doctor" if user_role == 'DOCTOR' else "/"), 404
+
+        # Get readings using detailed_reading view
+        readings_list = dbmanager.getAllWhere('detailed_reading', 'patient_id = %s', patient_id)
+
+        # Get notifications
+        notifs_list = dbmanager.getAllWhere('notification', 'patient_id = %s', patient_id)
+
+        # Create a Patient_Report object with patient info
+        patient_report_data = {
+            "id": patient_id,
+            "first_name": getattr(patient_basic_info, 'first_name', ''),
+            "last_name": getattr(patient_basic_info, 'last_name', ''),
+            "age_group": getattr(patient_basic_info, 'age', 'Unknown'),
+            "sex": getattr(patient_basic_info, 'sex', 'Unknown'),
+            "hypertension": int(getattr(patient_basic_info, 'hypertension', 0)),
+            "diabetes": int(getattr(patient_basic_info, 'diabetes', 0)),
+            "smoking_history": int(getattr(patient_basic_info, 'smoking_history', 0))
+        }
+
+        # Process readings if they exist
+        readings = []
+        if readings_list:
+            # Sort readings by timestamp (newest first)
+            readings_list.sort(key=lambda x: getattr(x, 'timestamp', datetime.min), reverse=True)
+
+            # Get the latest reading
+            latest_reading = readings_list[0] if readings_list else None
+
+            if latest_reading:
+                # Add latest reading data to patient report
+                patient_report_data.update({
+                    "latest_reading_timestamp": getattr(latest_reading, 'timestamp', None),
+                    "latest_reading_left_sensory_score": float(getattr(latest_reading, 'left_sensory_score', 0)),
+                    "latest_reading_right_sensory_score": float(getattr(latest_reading, 'right_sensory_score', 0)),
+                    "latest_reading_asymmetry_difference": float(getattr(latest_reading, 'asymmetry_difference', 0)),
+                    "latest_reading_average_asymmetry": float(getattr(latest_reading, 'average_asymmetry', 0)),
+                    "latest_reading_asymmetry_index": float(getattr(latest_reading, 'asymmetry_index', 0)),
+                    "latest_reading_risk_label": getattr(latest_reading, 'risk_label', 'Normal'),
+                })
+
+            # Find the reading with highest asymmetry
+            if readings_list:
+                highest_reading = max(readings_list,
+                                      key=lambda x: float(getattr(x, 'asymmetry_index', 0)))
+
+                # Add highest reading data
+                patient_report_data.update({
+                    "highest_reading_timestamp": getattr(highest_reading, 'timestamp', None),
+                    "highest_reading_left_sensory_score": float(getattr(highest_reading, 'left_sensory_score', 0)),
+                    "highest_reading_right_sensory_score": float(getattr(highest_reading, 'right_sensory_score', 0)),
+                    "highest_reading_asymmetry_difference": float(getattr(highest_reading, 'asymmetry_difference', 0)),
+                    "highest_reading_average_asymmetry": float(getattr(highest_reading, 'average_asymmetry', 0)),
+                    "highest_reading_asymmetry_index": float(getattr(highest_reading, 'asymmetry_index', 0)),
+                    "highest_reading_risk_label": getattr(highest_reading, 'risk_label', 'Normal'),
+                })
+
+            # Calculate averages across all readings
+            if readings_list:
+                avg_left = sum(float(getattr(r, 'left_sensory_score', 0)) for r in readings_list) / len(readings_list)
+                avg_right = sum(float(getattr(r, 'right_sensory_score', 0)) for r in readings_list) / len(readings_list)
+                avg_asymmetry_diff = sum(float(getattr(r, 'asymmetry_difference', 0)) for r in readings_list) / len(readings_list)
+                avg_avg_asymmetry = sum(float(getattr(r, 'average_asymmetry', 0)) for r in readings_list) / len(readings_list)
+                avg_asymmetry_idx = sum(float(getattr(r, 'asymmetry_index', 0)) for r in readings_list) / len(readings_list)
+
+                # Add average data
+                patient_report_data.update({
+                    "avg_left_sensory_score": round(avg_left, 2),
+                    "avg_right_sensory_score": round(avg_right, 2),
+                    "avg_asymmetry_difference": round(avg_asymmetry_diff, 2),
+                    "avg_average_asymmetry": round(avg_avg_asymmetry, 2),
+                    "avg_asymmetry_index": round(avg_asymmetry_idx, 4),
+                })
+
+            # Determine risk labels based on average
+            if 'avg_asymmetry_index' in patient_report_data:
+                avg_asymmetry = patient_report_data["avg_asymmetry_index"]
+
+                if avg_asymmetry > 0.2:
+                    avg_risk_label = 'Critical'
+                elif avg_asymmetry > 0.15:
+                    avg_risk_label = 'Borderline'
+                else:
+                    avg_risk_label = 'Normal'
+
+                patient_report_data["avg_risk_label"] = avg_risk_label
+
+            # Prepare readings for template (use existing risk_label from view)
+            for reading in readings_list[:10]:  # Limit to 10 most recent
+                readings.append(reading)
+
+        else:
+            # No readings yet
+            patient_report_data.update({
+                "latest_reading_timestamp": None,
+                "latest_reading_left_sensory_score": 0,
+                "latest_reading_right_sensory_score": 0,
+                "latest_reading_asymmetry_difference": 0,
+                "latest_reading_average_asymmetry": 0,
+                "latest_reading_asymmetry_index": 0,
+                "latest_reading_risk_label": "No readings",
+
+                "highest_reading_timestamp": None,
+                "highest_reading_left_sensory_score": 0,
+                "highest_reading_right_sensory_score": 0,
+                "highest_reading_asymmetry_difference": 0,
+                "highest_reading_average_asymmetry": 0,
+                "highest_reading_asymmetry_index": 0,
+                "highest_reading_risk_label": "No readings",
+
+                "avg_left_sensory_score": 0,
+                "avg_right_sensory_score": 0,
+                "avg_asymmetry_difference": 0,
+                "avg_average_asymmetry": 0,
+                "avg_asymmetry_index": 0,
+                "avg_risk_label": "No readings",
+            })
+
+        # For doctors, get doctor info
+        if user_role == 'DOCTOR':
+            doctor_info = dbmanager.getByID('doctor_info', user_id)
+            if doctor_info:
+                patient_report_data.update({
+                    "doctor_id": user_id,
+                    "doctor_first_name": getattr(doctor_info, 'first_name', ''),
+                    "doctor_last_name": getattr(doctor_info, 'last_name', ''),
+                    "doctor_title": getattr(doctor_info, 'title', 'Dr.'),
+                    "doctor_qualification": getattr(doctor_info, 'qualification', ''),
+                    "doctor_profession": getattr(doctor_info, 'profession', ''),
+                })
+
+        # Create Patient_Report object
+        from model.db.Patient_Report import Patient_Report
+        patient_report = Patient_Report(**patient_report_data)
+
+        return render_template('dashboard_patient.html',
+                               patient=patient_report,
+                               readings=readings,
+                               notifs=notifs_list,
+                               model_loaded=model is not None)
+
     except Exception as ex:
-        print(f"Dashboard error: {ex}")
-        return render_template('dashboard_patient.html', error=str(e))
+        import traceback
+        traceback.print_exc()
+        return render_template('error.html',
+                               error=f"Error loading dashboard: {str(ex)}",
+                               redirect_url="/"), 500
+
 @app.route('/dashboard/patient')
 def default_dashboard():
-    return redirect('/login')
+    """Redirect patient to their own dashboard"""
+    if 'user_id' not in session:
+        return redirect('/login')
 
+    if session.get('role') == 'PATIENT':
+        return redirect(f'/dashboard/patient/{session["user_id"]}')
+    elif session.get('role') == 'DOCTOR':
+        return redirect('/dashboard/doctor')
+    else:
+        return redirect('/login')
 
 
 # ========== MISC CONTROLLER ==========
@@ -552,6 +1021,12 @@ def upload_dataset():
 @app.route('/result')
 def result():
     return render_template('result.html',model_loaded=model is not None)
+
+from flask import send_from_directory
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 # ========== ERROR CONTROLLER ==========
 
