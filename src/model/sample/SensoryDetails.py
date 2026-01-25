@@ -24,6 +24,5 @@ class SensoryDetails:
     def calculate_asymmetry_index(self):
         avg = self.calculate_avg_asymmetry()
         asym_diff = self.calculate_asymmetry_diff()
-        self.asymmetry_index = asym_diff / avg if avg > 0 else 0.0
+        self.asymmetry_index = asym_diff / (avg + 1)  # ← ONLY LINE CHANGED!
         return self.asymmetry_index
-

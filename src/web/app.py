@@ -88,7 +88,7 @@ def predict_with_model(patient_data):
         left = float(patient_data.get("left_sensory_score"))
         right = float(patient_data.get("right_sensory_score"))
         avg = (left + right) / 2
-        asymmetry_index = abs(left - right) / avg if avg > 0 else 0
+        asymmetry_index = abs(left - right) / (avg + 1)  # Your +1 fix
 
         #Fetch Velocity from Database
         l_vel, r_vel, t_delta = dbmanager.get_reading_velocity(patient_data.get("id", 0))

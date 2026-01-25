@@ -154,7 +154,7 @@ def get_patient_baseline(patient_id):
 
 def get_reading_velocity(patient_id):
     """
-    Calculate the rate of change in sensory scores between the two most recent readings.
+    Calculate smoothed velocity using 5-point method for lacunar stroke detection.
     Returns: (left_velocity, right_velocity, time_diff_hours)
     """
     conn = None
@@ -162,40 +162,76 @@ def get_reading_velocity(patient_id):
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get the two most recent readings for this patient
+        # CHANGE 1: LIMIT 2 → LIMIT 5
         query = """
                 SELECT timestamp, left_sensory_score, right_sensory_score
                 FROM reading
                 WHERE patient_id = %s
                 ORDER BY timestamp DESC
-                LIMIT 2 \
+                LIMIT 5
                 """
         cursor.execute(query, (patient_id,))
         readings = cursor.fetchall()
 
         if len(readings) < 2:
-            # Not enough readings to calculate velocity
             return 0.0, 0.0, 0.0
 
-        current = readings[0]
-        previous = readings[1]
+        # If we have 5 readings, use smart 5-point math
+        if len(readings) >= 5:
+            # Put readings in order: oldest to newest
+            readings = list(reversed(readings))
 
-        # Convert string scores to floats
-        current_left = float(current['left_sensory_score']) if current['left_sensory_score'] is not None else 0.0
-        current_right = float(current['right_sensory_score']) if current['right_sensory_score'] is not None else 0.0
-        previous_left = float(previous['left_sensory_score']) if previous['left_sensory_score'] is not None else 0.0
-        previous_right = float(previous['right_sensory_score']) if previous['right_sensory_score'] is not None else 0.0
+            # Get scores as numbers
+            left_scores = []
+            right_scores = []
+            timestamps = []
 
-        # Calculate time difference in hours
-        time_diff = (current['timestamp'] - previous['timestamp']).total_seconds() / 3600
-        if time_diff == 0:
-            time_diff = 0.01  # Avoid division by zero
+            for r in readings:
+                left = float(r['left_sensory_score']) if r['left_sensory_score'] is not None else 0.0
+                right = float(r['right_sensory_score']) if r['right_sensory_score'] is not None else 0.0
+                left_scores.append(left)
+                right_scores.append(right)
+                timestamps.append(r['timestamp'])
 
-        # Calculate rate of change per hour
-        left_velocity = (current_left - previous_left) / time_diff
-        right_velocity = (current_right - previous_right) / time_diff
+            # 5-POINT FORMULA FOR LACUNAR STROKES:
+            # Looks at pattern: score1, score2, score3, score4, score5
+            # Detects "up-down-up-down" stuttering pattern
+            left_velocity = (-left_scores[4] + 8*left_scores[3] - 8*left_scores[1] + left_scores[0]) / 12
+            right_velocity = (-right_scores[4] + 8*right_scores[3] - 8*right_scores[1] + right_scores[0]) / 12
 
-        return round(left_velocity, 3), round(right_velocity, 3), round(time_diff, 2)
+            # Calculate average time between readings
+            time_diffs = []
+            for i in range(1, len(timestamps)):
+                diff = (timestamps[i] - timestamps[i-1]).total_seconds() / 3600
+                if diff > 0:
+                    time_diffs.append(diff)
+
+            avg_time_diff = sum(time_diffs)/len(time_diffs) if time_diffs else 1.0
+
+            # Make velocity "per hour"
+            left_velocity = left_velocity / avg_time_diff
+            right_velocity = right_velocity / avg_time_diff
+
+            return round(left_velocity, 3), round(right_velocity, 3), round(avg_time_diff, 2)
+
+        else:
+            # Fallback: 2-point method for 2-4 readings
+            current = readings[0]
+            previous = readings[1]
+
+            current_left = float(current['left_sensory_score']) if current['left_sensory_score'] is not None else 0.0
+            current_right = float(current['right_sensory_score']) if current['right_sensory_score'] is not None else 0.0
+            previous_left = float(previous['left_sensory_score']) if previous['left_sensory_score'] is not None else 0.0
+            previous_right = float(previous['right_sensory_score']) if previous['right_sensory_score'] is not None else 0.0
+
+            time_diff = (current['timestamp'] - previous['timestamp']).total_seconds() / 3600
+            if time_diff == 0:
+                time_diff = 0.01
+
+            left_velocity = (current_left - previous_left) / time_diff
+            right_velocity = (current_right - previous_right) / time_diff
+
+            return round(left_velocity, 3), round(right_velocity, 3), round(time_diff, 2)
 
     except Exception as e:
         print(f"Error calculating reading velocity: {e}")
