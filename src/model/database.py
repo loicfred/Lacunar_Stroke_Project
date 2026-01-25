@@ -22,17 +22,6 @@ def get_connection():
         database="lacunar_stroke"
     )
 
-#ENTITY_REGISTRY = {
-#    "user": User,
-#    "patient_info": Patient_Info,
-#   "doctor_info": Doctor_Info,
-#    "reading": Reading,
-#    "detailed_reading": Detailed_Reading,
-#    "patient_report": Patient_Report,
-#    "exception_report": Patient_Report,
-#    "notification": Notification
-#}
-
 ENTITY_REGISTRY = {
     "user": User,
     "patient_info": Patient_Info,
@@ -40,7 +29,7 @@ ENTITY_REGISTRY = {
     "reading": Reading,
     "detailed_reading": Detailed_Reading,
     "notification": Notification,
-    "exception_report": Patient_Report,
+    "patient_report": Patient_Report,
 }
 
 def callProcedure(table_name, statement, *value):
@@ -235,7 +224,6 @@ def generate_sample_data():
             id=user_id,
             age_group=random.choice(["30-39", "40-49", "50-59", "60-69", "70-79", "80+"]),
             sex=random.choice(["Male", "Female"]),
-            hypertension=random.choice([0, 1]),
             diabetes=random.choice([0, 1]),
             smoking_history=random.choice([0, 1]),
         )
@@ -245,19 +233,23 @@ def generate_sample_data():
         # Initial scores
         left_score = random.uniform(7, 10)
         right_score = random.uniform(7, 10)
+        blood_pressure = random.uniform(80, 150)
 
         for x in range(10):
             reading = Reading(
                 patient_id=user_id,
                 timestamp=datetime.now() + timedelta(hours=(x*3)),
+                blood_pressure=random.uniform(80, 150),
                 left_sensory_score=round(left_score, 2),
                 right_sensory_score=round(right_score, 2)
             )
 
             left_score = left_score + random.uniform(0.05, -0.5)
             right_score = right_score + random.uniform(0.05, -0.5)
+            blood_pressure = blood_pressure + random.uniform(3, -3)
             reading.left_sensory_score = left_score
             reading.right_sensory_score = right_score
+            reading.blood_pressure = blood_pressure
 
             insert("reading", reading)
 

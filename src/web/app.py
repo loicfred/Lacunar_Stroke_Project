@@ -666,7 +666,7 @@ def doctor_dashboard():
             return redirect('/login')
         user_id = session['user_id']
         doctor_info = dbmanager.getByID('doctor_info', user_id) if dbmanager.getByID('doctor_info', user_id) else None
-        patients = dbmanager.getAllWhere('exception_report', 'doctor_id = ?', user_id)
+        patients = dbmanager.getAllWhere('patient_report', 'doctor_id = ?', user_id)
 
         critical_count = sum(1 for exception in patients if hasattr(exception, 'latest_reading_risk_label') and exception.latest_reading_risk_label == 'Critical') if patients else 0
         borderline_count = sum(1 for exception in patients if hasattr(exception, 'latest_reading_risk_label') and exception.latest_reading_risk_label == 'Borderline') if patients else 0
@@ -685,108 +685,18 @@ def doctor_dashboard():
 
 @app.route('/exception-report')
 def exception_report():
-    """
-    Exception report for doctors - shows patients with abnormal readings
-    """
-    try:
-        if 'user_id' not in session or session['role'] != 'DOCTOR':
-            return redirect('/login')
 
-        # Get all readings from detailed_reading view
-        all_readings = dbmanager.getAll('detailed_reading')
+    exception_list = dbmanager.getAll('patient_report')
+    critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
+    borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
+    normal_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Normal')
 
-        # Group readings by patient
-        patient_readings = {}
-        for reading in all_readings:
-            patient_id = reading.patient_id
-            if patient_id not in patient_readings:
-                patient_readings[patient_id] = []
-            patient_readings[patient_id].append(reading)
+    avg_asym = round(sum(exception.highest_reading_asymmetry_index for exception in exception_list) / len(exception_list) * 100, 2)
 
-        # Create exception list with latest readings
-        exception_list = []
-        critical_count = 0
-        borderline_count = 0
-        normal_count = 0
+    filtered_exception_list = [exception for exception in exception_list if hasattr(exception, 'latest_reading_risk_label') and exception.latest_reading_risk_label in ['Critical', 'Borderline']]
 
-        for patient_id, readings in patient_readings.items():
-            if readings:
-                # Sort by timestamp (newest first)
-                readings.sort(key=lambda x: x.timestamp, reverse=True)
-                latest = readings[0]
-
-                # Get patient info
-                patient_info = dbmanager.getByID('patient_info', patient_id)
-                if not patient_info:
-                    continue
-
-                # Calculate average asymmetry for this patient
-                total_asymmetry = sum(float(getattr(r, 'asymmetry_index', 0)) for r in readings)
-                avg_asymmetry = total_asymmetry / len(readings)
-
-                # Find highest asymmetry reading
-                highest_reading = max(readings, key=lambda x: float(getattr(x, 'asymmetry_index', 0)))
-
-                # Create Patient_Report object
-                from model.db.Patient_Report import Patient_Report
-
-                patient_report = Patient_Report(
-                    id=patient_id,
-                    first_name=getattr(patient_info, 'first_name', ''),
-                    last_name=getattr(patient_info, 'last_name', ''),
-                    age=getattr(patient_info, 'age', 'Unknown'),
-                    sex=getattr(patient_info, 'sex', 'Unknown'),
-                    hypertension=int(getattr(patient_info, 'hypertension', 0)),
-                    diabetes=int(getattr(patient_info, 'diabetes', 0)),
-                    smoking_history=int(getattr(patient_info, 'smoking_history', 0)),
-                    latest_reading_timestamp=latest.timestamp,
-                    latest_reading_asymmetry_index=float(getattr(latest, 'asymmetry_index', 0)),
-                    latest_reading_left_score=float(getattr(latest, 'left_sensory_score', 0)),
-                    latest_reading_right_score=float(getattr(latest, 'right_sensory_score', 0)),
-                    avg_asymmetry_index=float(avg_asymmetry),
-                    highest_reading_asymmetry_index=float(getattr(highest_reading, 'asymmetry_index', 0))
-                )
-
-                # Determine risk label based on average
-                if avg_asymmetry > 0.2:
-                    risk_label = 'Critical'
-                    critical_count += 1
-                elif avg_asymmetry > 0.15:
-                    risk_label = 'Borderline'
-                    borderline_count += 1
-                else:
-                    risk_label = 'Normal'
-                    normal_count += 1
-
-                patient_report.avg_risk_label = risk_label
-                patient_report.latest_reading_risk_label = latest.risk_label  # Use from view
-
-                exception_list.append(patient_report)
-
-        # Filter to show only Critical and Borderline cases
-        filtered_exception_list = [
-            exception for exception in exception_list
-            if hasattr(exception, 'avg_risk_label') and
-               exception.avg_risk_label in ['Critical', 'Borderline']
-        ]
-
-        return render_template('exception_report.html',
-                               exception_list=filtered_exception_list,
-                               criticalcount=critical_count,
-                               borderlinecount=borderline_count,
-                               normalcount=normal_count,
-                               model_loaded=model is not None)
-
-    except Exception as ex:
-        print(f"Exception report error: {ex}")
-        import traceback
-        traceback.print_exc()
-        return render_template('exception_report.html',
-                               error=str(ex),
-                               exception_list=[],
-                               criticalcount=0,
-                               borderlinecount=0,
-                               normalcount=0)
+    return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
+                           model_loaded=model is not None)
 
 @app.route('/dashboard/patient')
 def patient_dashboard():
