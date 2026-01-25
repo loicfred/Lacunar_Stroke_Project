@@ -509,8 +509,8 @@
                         <span id="sex">{{ patient.sex }}</span>
                     </div>
                     <div class="info-group mt-10" style="width: 50%;">
-                        <label>Hypertension Status:</label>
-                        <span id="hypertension">{% if patient.hypertension == 1 %}Yes{% else %}No{% endif %}</span>
+                        <label>Blood Pressure:</label>
+                        <span id="hypertension">{{ if patient.blood_pressure }} mmHg</span>
                     </div>
                 </div>
                 <div class="display-flex">
