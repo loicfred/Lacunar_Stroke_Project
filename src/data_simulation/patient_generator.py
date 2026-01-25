@@ -17,7 +17,6 @@ def generate_single_patient_details(patient_id: int) -> PatientDetails:
                           random.choice(AGE_GROUPS),
                           random.choice(SEXES),
                           random.choice([0, 1]),
-                          random.choice([0, 1]),
                           random.choice([0, 1]))
 
 
@@ -71,7 +70,9 @@ def generate_single_sensory_details(patient_info=None) -> SensoryDetails:
         right_sensory = round(left_sensory + random.uniform(-0.3, 0.3), 2)
         affected_side, response_strength, label, tier = "None", "Strong Response", 0, 0
 
-    details = SensoryDetails(left_sensory, right_sensory, affected_side, label)
+    blood_pressure = round(random.uniform(80, 150), 2)
+
+    details = SensoryDetails(left_sensory, right_sensory, blood_pressure, affected_side, label)
     details.response_strength = response_strength
     details.impact_tier = tier
     return details

@@ -1,9 +1,10 @@
 from datetime import datetime
 
 class SensoryDetails:
-    def __init__(self, left_sensory_score, right_sensory_score, affected_side, asymmetry_label, impact_tier=0, score_velocity=0.):
+    def __init__(self, left_sensory_score, right_sensory_score, blood_pressure, affected_side, asymmetry_label, impact_tier=0, score_velocity=0.):
         self.left_sensory_score = left_sensory_score
         self.right_sensory_score = right_sensory_score
+        self.blood_pressure = blood_pressure
         self.affected_side = affected_side
         self.asymmetry_label = asymmetry_label
         self.impact_tier = impact_tier
