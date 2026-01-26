@@ -618,16 +618,17 @@ def doctor_dashboard():
         alertsCount = sum(1 for exception in notifications if hasattr(exception, 'id') and exception.type == 'Critical') if notifications else 0
 
         return render_template('dashboard_doctor.html',
-                               doctor=doctor_info, patients=patients,
+                               doctor=doctor_info, patients=patients, patient_json=(patient.__dict__ for patient  in patients),
                                criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, alertscount=alertsCount,
                                notifications=notifications)
     except Exception as ex:
         print(f"Dashboard error: {ex}")
         return render_template('exception_report.html', error=str(e))
 
-@app.route('/exception-report')
+@app.route('/exception-report') # Allow doctors to go to a list of critical patients
 def exception_report():
-
+    if 'user_id' not in session or session['role'] != 'DOCTOR':
+        return redirect('/login')
     exception_list = dbmanager.getAll('patient_report')
     critical_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Critical')
     borderline_count = sum(1 for exception in exception_list if hasattr(exception, 'avg_risk_label') and exception.avg_risk_label == 'Borderline')
@@ -640,214 +641,30 @@ def exception_report():
     return render_template('exception_report.html', exception_list=filtered_exception_list, criticalcount=critical_count, borderlinecount=borderline_count, normalcount=normal_count, avg_asym=avg_asym,
                            model_loaded=model is not None)
 
-@app.route('/dashboard/patient')
-def patient_dashboard():
-    """
-    Default patient dashboard - shows the logged-in patient's own dashboard
-    """
+@app.route('/dashboard/patient') # Default dashboard will send a doctor to his dashboard, and a patient to his dashboard.
+def default_dashboard():
     try:
-        if 'user_id' not in session:
-            return redirect('/login')
+        if 'user_id' not in session:  return redirect('/login')
+        if session['role'] != 'USER': return redirect('/dashboard/doctor')
 
-        # Check if user is a patient (user = patient)
-        if session.get('role', '').lower() != 'user':  # Changed here
-            # If doctor, redirect them to their own dashboard
-            if session.get('role', '').lower() == 'doctor':
-                return redirect('/dashboard/doctor')
-            else:
-                return redirect('/login')
-
-        patient_id = session['user_id']
-        return redirect(f'/dashboard/patient/{patient_id}')
-
+        return redirect(f'/dashboard/patient/{session['user_id']}')
     except Exception as ex:
         print(f"Patient dashboard error: {ex}")
         return render_template('error.html', error=str(ex))
 
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
-    """
-    View patient dashboard - accessible by both the patient themselves and doctors
-    """
-    try:
         if 'user_id' not in session:
             return redirect('/login')
 
-        user_id = session['user_id']
-        user_role = session.get('role', '').lower()  # Get and lowercase
-
         # Check access permissions
-        if user_role == 'user' and str(user_id) != str(patient_id):  # Changed here
-            return render_template('error.html',
-                                   error="You don't have permission to view this dashboard",
-                                   redirect_url=f"/dashboard/patient/{user_id}"), 403
+        if session['role'] == 'USER' and str(session['user_id']) != str(patient_id):
+            return render_template('error.html', error="You don't have permission to view this dashboard",  redirect_url=f"/dashboard/patient/{patient_id}"), 403
 
-        # Get patient basic info
-        patient_basic_info = dbmanager.getByID('patient_info', patient_id)
-
-        if not patient_basic_info:
-            return render_template('error.html',
-                                   error=f"Patient with ID {patient_id} not found",
-                                   redirect_url="/dashboard/doctor" if user_role == 'DOCTOR' else "/"), 404
-
-        # Get readings using detailed_reading view
-        readings_list = dbmanager.getAllWhere('detailed_reading', 'patient_id = %s', patient_id)
-
-        # Get notifications
-        notifs_list = dbmanager.getAllWhere('notification', 'patient_id = %s', patient_id)
-
-        # Create a Patient_Report object with patient info
-        patient_report_data = {
-            "id": patient_id,
-            "first_name": getattr(patient_basic_info, 'first_name', ''),
-            "last_name": getattr(patient_basic_info, 'last_name', ''),
-            "age_group": getattr(patient_basic_info, 'age', 'Unknown'),
-            "sex": getattr(patient_basic_info, 'sex', 'Unknown'),
-            "hypertension": int(getattr(patient_basic_info, 'hypertension', 0)),
-            "diabetes": int(getattr(patient_basic_info, 'diabetes', 0)),
-            "smoking_history": int(getattr(patient_basic_info, 'smoking_history', 0))
-        }
-
-        # Process readings if they exist
-        readings = []
-        if readings_list:
-            # Sort readings by timestamp (newest first)
-            readings_list.sort(key=lambda x: getattr(x, 'timestamp', datetime.min), reverse=True)
-
-            # Get the latest reading
-            latest_reading = readings_list[0] if readings_list else None
-
-            if latest_reading:
-                # Add latest reading data to patient report
-                patient_report_data.update({
-                    "latest_reading_timestamp": getattr(latest_reading, 'timestamp', None),
-                    "latest_reading_left_sensory_score": float(getattr(latest_reading, 'left_sensory_score', 0)),
-                    "latest_reading_right_sensory_score": float(getattr(latest_reading, 'right_sensory_score', 0)),
-                    "latest_reading_asymmetry_difference": float(getattr(latest_reading, 'asymmetry_difference', 0)),
-                    "latest_reading_average_asymmetry": float(getattr(latest_reading, 'average_asymmetry', 0)),
-                    "latest_reading_asymmetry_index": float(getattr(latest_reading, 'asymmetry_index', 0)),
-                    "latest_reading_risk_label": getattr(latest_reading, 'risk_label', 'Normal'),
-                })
-
-            # Find the reading with highest asymmetry
-            if readings_list:
-                highest_reading = max(readings_list,
-                                      key=lambda x: float(getattr(x, 'asymmetry_index', 0)))
-
-                # Add highest reading data
-                patient_report_data.update({
-                    "highest_reading_timestamp": getattr(highest_reading, 'timestamp', None),
-                    "highest_reading_left_sensory_score": float(getattr(highest_reading, 'left_sensory_score', 0)),
-                    "highest_reading_right_sensory_score": float(getattr(highest_reading, 'right_sensory_score', 0)),
-                    "highest_reading_asymmetry_difference": float(getattr(highest_reading, 'asymmetry_difference', 0)),
-                    "highest_reading_average_asymmetry": float(getattr(highest_reading, 'average_asymmetry', 0)),
-                    "highest_reading_asymmetry_index": float(getattr(highest_reading, 'asymmetry_index', 0)),
-                    "highest_reading_risk_label": getattr(highest_reading, 'risk_label', 'Normal'),
-                })
-
-            # Calculate averages across all readings
-            if readings_list:
-                avg_left = sum(float(getattr(r, 'left_sensory_score', 0)) for r in readings_list) / len(readings_list)
-                avg_right = sum(float(getattr(r, 'right_sensory_score', 0)) for r in readings_list) / len(readings_list)
-                avg_asymmetry_diff = sum(float(getattr(r, 'asymmetry_difference', 0)) for r in readings_list) / len(readings_list)
-                avg_avg_asymmetry = sum(float(getattr(r, 'average_asymmetry', 0)) for r in readings_list) / len(readings_list)
-                avg_asymmetry_idx = sum(float(getattr(r, 'asymmetry_index', 0)) for r in readings_list) / len(readings_list)
-
-                # Add average data
-                patient_report_data.update({
-                    "avg_left_sensory_score": round(avg_left, 2),
-                    "avg_right_sensory_score": round(avg_right, 2),
-                    "avg_asymmetry_difference": round(avg_asymmetry_diff, 2),
-                    "avg_average_asymmetry": round(avg_avg_asymmetry, 2),
-                    "avg_asymmetry_index": round(avg_asymmetry_idx, 4),
-                })
-
-            # Determine risk labels based on average
-            if 'avg_asymmetry_index' in patient_report_data:
-                avg_asymmetry = patient_report_data["avg_asymmetry_index"]
-
-                if avg_asymmetry > 0.2:
-                    avg_risk_label = 'Critical'
-                elif avg_asymmetry > 0.15:
-                    avg_risk_label = 'Borderline'
-                else:
-                    avg_risk_label = 'Normal'
-
-                patient_report_data["avg_risk_label"] = avg_risk_label
-
-            # Prepare readings for template (use existing risk_label from view)
-            for reading in readings_list[:10]:  # Limit to 10 most recent
-                readings.append(reading)
-
-        else:
-            # No readings yet
-            patient_report_data.update({
-                "latest_reading_timestamp": None,
-                "latest_reading_left_sensory_score": 0,
-                "latest_reading_right_sensory_score": 0,
-                "latest_reading_asymmetry_difference": 0,
-                "latest_reading_average_asymmetry": 0,
-                "latest_reading_asymmetry_index": 0,
-                "latest_reading_risk_label": "No readings",
-
-                "highest_reading_timestamp": None,
-                "highest_reading_left_sensory_score": 0,
-                "highest_reading_right_sensory_score": 0,
-                "highest_reading_asymmetry_difference": 0,
-                "highest_reading_average_asymmetry": 0,
-                "highest_reading_asymmetry_index": 0,
-                "highest_reading_risk_label": "No readings",
-
-                "avg_left_sensory_score": 0,
-                "avg_right_sensory_score": 0,
-                "avg_asymmetry_difference": 0,
-                "avg_average_asymmetry": 0,
-                "avg_asymmetry_index": 0,
-                "avg_risk_label": "No readings",
-            })
-
-        # For doctors, get doctor info
-        if user_role == 'DOCTOR':
-            doctor_info = dbmanager.getByID('doctor_info', user_id)
-            if doctor_info:
-                patient_report_data.update({
-                    "doctor_id": user_id,
-                    "doctor_first_name": getattr(doctor_info, 'first_name', ''),
-                    "doctor_last_name": getattr(doctor_info, 'last_name', ''),
-                    "doctor_title": getattr(doctor_info, 'title', 'Dr.'),
-                    "doctor_qualification": getattr(doctor_info, 'qualification', ''),
-                    "doctor_profession": getattr(doctor_info, 'profession', ''),
-                })
-
-        # Create Patient_Report object
-        from model.db.Patient_Report import Patient_Report
-        patient_report = Patient_Report(**patient_report_data)
-
-        return render_template('dashboard_patient.html',
-                               patient=patient_report,
-                               readings=readings,
-                               notifs=notifs_list,
-                               model_loaded=model is not None)
-
-    except Exception as ex:
-        import traceback
-        traceback.print_exc()
-        return render_template('error.html',
-                               error=f"Error loading dashboard: {str(ex)}",
-                               redirect_url="/"), 500
-
-@app.route('/dashboard/patient')
-def default_dashboard():
-    """Redirect patient to their own dashboard"""
-    if 'user_id' not in session:
-        return redirect('/login')
-
-    if session.get('role') == 'PATIENT':
-        return redirect(f'/dashboard/patient/{session["user_id"]}')
-    elif session.get('role') == 'DOCTOR':
-        return redirect('/dashboard/doctor')
-    else:
-        return redirect('/login')
+        patient_info = dbmanager.getByID('patient_report', patient_id)
+        readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
+        notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
+        return render_template('dashboard_patient.html',patient=patient_info, readings=readings, notifs=notifs,model_loaded=model is not None)
 
 
 # ========== MISC CONTROLLER ==========

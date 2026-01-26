@@ -509,16 +509,6 @@
                         <span id="sex">{{ patient.sex }}</span>
                     </div>
                     <div class="info-group mt-10" style="width: 50%;">
-                        <label>Blood Pressure:</label>
-                        <span id="hypertension">{{ if patient.blood_pressure }} mmHg</span>
-                    </div>
-                </div>
-                <div class="display-flex">
-                    <div class="info-group mt-10" style="width: 50%;">
-                        <label>Diabetes Status:</label>
-                        <span id="diabetes">{% if patient.diabetes == 1 %}Yes{% else %}No{% endif %}</span>
-                    </div>
-                    <div class="info-group mt-10" style="width: 50%;">
                         <label>Smoking History Status:</label>
                         <span id="smoking_history">{% if patient.smoking_history == 1 %}Yes{% else %}No{% endif %}</span>
                     </div>
@@ -551,6 +541,8 @@
                 <thead>
                 <tr>
                     <th>Time</th>
+                    <th>Systolic BP</th>
+                    <th>Hba1c</th>
                     <th>Left Gait</th>
                     <th>Right Gait</th>
                     <th>Asymmetry %</th>
@@ -562,6 +554,8 @@
                 {% for reading in readings %}
                 <tr>
                     <td>{{ reading.timestamp.strftime('%Y-%m-%d %H:%M') if reading.timestamp else 'N/A' }}</td>
+                    <td>{{ reading.systolic_bp | round(2) if reading.systolic_bp else '0.0' }}</td>
+                    <td>{{ reading.hba1c | round(2) if reading.hba1c else '0.0' }}</td>
                     <td>{{ reading.left_sensory_score | round(2) if reading.left_sensory_score else '0.0' }}</td>
                     <td>{{ reading.right_sensory_score | round(2) if reading.right_sensory_score else '0.0' }}</td>
                     <td><strong>
@@ -916,6 +910,8 @@
         const newRow = `
             <tr>
                 <td>${dateString} ${timeString}</td>
+                <td>${reading.systolic_bp}</td>
+                <td>${reading.hba1c}</td>
                 <td>${reading.left}</td>
                 <td>${reading.right}</td>
                 <td><strong>${reading.asymmetry.toFixed(1)}%</strong></td>

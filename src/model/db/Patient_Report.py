@@ -7,14 +7,12 @@ class Patient_Report:
         self.patient_id = kwargs.get("patient_id")
         self.age_group = kwargs.get("age_group")
         self.sex = kwargs.get("sex")
-        self.systolic_bp = kwargs.get("systolic_bp")  # Continuous
-        self.hba1c = kwargs.get("hba1c")              # Continuous
         self.smoking_history = kwargs.get("smoking_history")
         self.first_name = kwargs.get("first_name")
         self.last_name = kwargs.get("last_name")
 
-        self.highest_systolic_bp = kwargs.get("highest_reading_systolic_bp")  # Renamed
-        self.highest_hba1c = kwargs.get("highest_reading_hba1c")              # Add this
+        self.highest_systolic_bp = kwargs.get("highest_reading_systolic_bp")
+        self.highest_hba1c = kwargs.get("highest_reading_hba1c")
         self.highest_reading_timestamp = kwargs.get("highest_reading_timestamp")
         self.highest_reading_left_sensory_score = kwargs.get("highest_reading_left_sensory_score")
         self.highest_reading_right_sensory_score = kwargs.get("highest_reading_right_sensory_score")

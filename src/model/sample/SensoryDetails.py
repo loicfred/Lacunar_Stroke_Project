@@ -5,8 +5,8 @@ class SensoryDetails:
                  affected_side, asymmetry_label, impact_tier=0, score_velocity=0., volatility_index=0.):
         self.left_sensory_score = left_sensory_score
         self.right_sensory_score = right_sensory_score
-        self.systolic_bp = systolic_bp    # ✅ Yes, belongs here since it's per reading
-        self.hba1c = hba1c                # ✅ Yes, belongs here since it's per reading
+        self.systolic_bp = systolic_bp
+        self.hba1c = hba1c
         self.affected_side = affected_side
         self.asymmetry_label = asymmetry_label
         self.impact_tier = impact_tier
@@ -26,5 +26,5 @@ class SensoryDetails:
     def calculate_asymmetry_index(self):
         avg = self.calculate_avg_asymmetry()
         asym_diff = self.calculate_asymmetry_diff()
-        self.asymmetry_index = asym_diff / (avg + 1)  # ← ONLY LINE CHANGED!
+        self.asymmetry_index = asym_diff / (avg + 1)
         return self.asymmetry_index

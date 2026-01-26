@@ -299,6 +299,18 @@ def generate_sample_data():
         )
         user_id = insert("user", user)
 
+        patient_info = Patient_Info(
+            id=user_id,
+            age_group=random.choice(["30-39", "40-49", "50-59", "60-69", "70-79", "80+"]),
+            sex=random.choice(["Male", "Female"]),
+            smoking_history=random.choice([0, 1]),
+            first_name=f"Patient_{i}",
+            last_name=f"Test_{i}"
+            #doctor_id=None,               Added (optional)
+            #notes=f"Sample patient {i}"   Added (optional)
+        )
+        insert("patient_info", patient_info)
+
         # Ref 5 & 6: Continuous Vital Mapping
         is_hypertensive = random.random() < 0.3
         is_diabetic = random.random() < 0.2
@@ -307,24 +319,11 @@ def generate_sample_data():
         base_systolic_bp = int(random.gauss(165, 15)) if is_hypertensive else int(random.gauss(122, 10))
         base_hba1c = round(random.gauss(7.8, 1.2), 1) if is_diabetic else round(random.gauss(5.2, 0.3), 1)
 
-        patient_info = Patient_Info(
-            id=user_id,
-            age_group=random.choice(["30-39", "40-49", "50-59", "60-69", "70-79", "80+"]),
-            sex=random.choice(["Male", "Female"]),
-            smoking_history=random.choice([0, 1]),
-            first_name=f"Patient_{i}",    # Added
-            last_name=f"Test_{i}"        # Added
-            #doctor_id=None,                # Added (optional)
-            #notes=f"Sample patient {i}"   # Added (optional)
-        )
-        insert("patient_info", patient_info)
-
         # Ref 1: Gaussian Biological Data (Mean 9.0 for healthy)
         base_left = random.gauss(9.0, 0.5)
         base_right = random.gauss(9.0, 0.5)
 
         for x in range(10):
-            # Ref 2: Add Measurement Noise for model robustness
             noise_l = random.normalvariate(0, 0.3)
             noise_r = random.normalvariate(0, 0.3)
 
@@ -334,9 +333,8 @@ def generate_sample_data():
             reading = Reading(
                 patient_id=user_id,
                 timestamp=datetime.now() - timedelta(hours=((10-x)*3)),
-                #blood_pressure=systolic_bp + random.uniform(-5, 5),
-                systolic_bp=current_systolic_bp,  # Continuous, per reading
-                hba1c=current_hba1c,              # Continuous, per reading
+                systolic_bp=current_systolic_bp,
+                hba1c=current_hba1c,
                 left_sensory_score=round(max(0, min(10, base_left + noise_l)), 2),
                 right_sensory_score=round(max(0, min(10, base_right + noise_r)), 2)
             )

@@ -580,15 +580,85 @@
     }
 
     // Export all data
-    function exportAllData() {
-        // In real app, this would generate CSV from RED's database
-        alert("Exporting all patient data to CSV...");
-        // Simulate CSV download
-        const link = document.createElement('a');
-        link.href = 'data:text/csv;charset=utf-8,Patient,Age,Condition,Asymmetry,Status\nJohn Doe,65,Stroke Recovery,23,Critical\nSarah Miller,58,Parkinson\'s,12,Normal\nMike Johnson,72,Post-Surgery,18,Borderline\nEmma Wilson,45,MS,25,Critical\nRobert Chen,61,Stroke Recovery,14,Normal';
-        link.download = 'patient_data_export.csv';
-        link.click();
-    }
+    // function exportAllData() {
+    //     // Build CSV from Flask-passed patients data
+    //     const patients = {{ patient_json }};
+    //
+    //
+    //     // CSV Headers
+    //     const headers = [
+    //         'Patient ID',
+    //         'First Name',
+    //         'Last Name',
+    //         'Age Group',
+    //         'Sex',
+    //         'Smoking History',
+    //         'Doctor ID',
+    //         'Latest Reading Timestamp',
+    //         'Latest Systolic BP',
+    //         'Latest HbA1c',
+    //         'Latest Left Sensory Score',
+    //         'Latest Right Sensory Score',
+    //         'Latest Asymmetry Index (%)',
+    //         'Latest Risk Label',
+    //         'Average Systolic BP',
+    //         'Average HbA1c',
+    //         'Average Left Sensory Score',
+    //         'Average Right Sensory Score',
+    //         'Average Asymmetry Index (%)',
+    //         'Highest Systolic BP',
+    //         'Highest HbA1c',
+    //         'Highest Left Sensory Score',
+    //         'Highest Right Sensory Score',
+    //         'Highest Asymmetry Index (%)',
+    //         'Notes'
+    //     ];
+    //
+    //     // Build CSV rows
+    //     const rows = patients.map(patient => {
+    //         return [
+    //             patient.id || '',
+    //             patient.first_name || '',
+    //             patient.last_name || '',
+    //             patient.age_group || '',
+    //             patient.sex || '',
+    //             patient.smoking_history || '',
+    //             patient.doctor_id || '',
+    //             patient.latest_reading_timestamp || '',
+    //             patient.latest_reading_systolic_bp || '',
+    //             patient.latest_reading_hba1c || '',
+    //             patient.latest_reading_left_sensory_score || '',
+    //             patient.latest_reading_right_sensory_score || '',
+    //             patient.latest_reading_asymmetry_index ? (patient.latest_reading_asymmetry_index * 100).toFixed(2) : '',
+    //             patient.latest_reading_risk_label || '',
+    //             patient.average_systolic_bp || '',
+    //             patient.average_hba1c || '',
+    //             patient.average_left_sensory_score || '',
+    //             patient.average_right_sensory_score || '',
+    //             patient.average_asymmetry_index ? (patient.average_asymmetry_index * 100).toFixed(2) : '',
+    //             patient.highest_systolic_bp || '',
+    //             patient.highest_hba1c || '',
+    //             patient.highest_left_sensory_score || '',
+    //             patient.highest_right_sensory_score || '',
+    //             patient.highest_asymmetry_index ? (patient.highest_asymmetry_index * 100).toFixed(2) : '',
+    //             (patient.notes || '').replace(/"/g, '""') // Escape quotes in notes
+    //         ].map(field => `"${field}"`).join(',');
+    //     });
+    //
+    //     // Combine headers and rows
+    //     const csvContent = [headers.join(','), ...rows].join('\n');
+    //
+    //     // Create and trigger download
+    //     const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+    //     const link = document.createElement('a');
+    //     const url = URL.createObjectURL(blob);
+    //     link.href = url;
+    //     link.download = `patient_data_export_${new Date().toISOString().split('T')[0]}.csv`;
+    //     link.click();
+    //     URL.revokeObjectURL(url);
+    //
+    //     showToast(`Exported ${patients.length} patient records to CSV`);
+    // }
 
     // Export single patient data
     function exportSinglePatient(patientId) {
