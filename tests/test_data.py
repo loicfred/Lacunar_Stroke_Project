@@ -17,7 +17,7 @@ def run_test():
     print("🔄 Generating 5 complete patient profiles...")
 
     # 2. Generate the raw data parts
-    patients = patient_gen.generate_batch_patients_data(5)
+    patients = patient_gen.generate_batch_patients_data(20)
 
     # 3. Merge into a master DataFrame
     merged_df = pd.DataFrame([p.__dict__ for p in patients])
@@ -46,7 +46,7 @@ def run_test():
     print(f"📍 CSV Path: {csv_path}")
     #print(f"📍 JSON Path: {json_path}")
     print("\nPreview of first 5 records:")
-    print(merged_df.head(5).to_string())
+    print(merged_df.head(20).to_string())
 
 if __name__ == "__main__":
     run_test()

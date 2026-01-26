@@ -96,6 +96,30 @@ def calculate_stuttering_volatility(patient_id, current_avg_score):
 
 
 # ========== MODEL PREDICTION FUNCTION ==========
+def encode_diabetes_type(diabetes_type):
+    """Encode diabetes type to numerical values"""
+    encoding = {
+        "None": 0,
+        "Type 1": 1,
+        "Type 2": 2,
+        "Gestational": 3,
+        "Prediabetes": 4,
+        "Other": 5
+    }
+    return encoding.get(diabetes_type, 0)
+
+def encode_bp_category(bp_category):
+    """Encode BP category to numerical values"""
+    encoding = {
+        "Normal": 0,
+        "Elevated": 1,
+        "Hypertension Stage 1": 2,
+        "Hypertension Stage 2": 3,
+        "Hypertensive Crisis": 4
+    }
+    return encoding.get(bp_category, 0)
+
+
 def predict_with_model(patient_data):
     """
     Unified Prediction Logic:
@@ -103,40 +127,73 @@ def predict_with_model(patient_data):
     - Side Detection
     - Bilateral Consideration
     """
-    if model is None: return None
+    if model is None:
+        return None
 
     try:
         # 1. Prepare Features
         left = float(patient_data.get("left_sensory_score"))
         right = float(patient_data.get("right_sensory_score"))
         avg = (left + right) / 2
-        asymmetry_index = abs(left - right) / (avg + 1)  # Your +1 fix
+        asymmetry_index = abs(left - right) / (avg + 1)  # +1 to avoid division by zero
 
-        #Fetch Velocity from Database
+        # Fetch Velocity from Database
         l_vel, r_vel, t_delta = dbmanager.get_reading_velocity(patient_data.get("id", 0))
-        score_velocity = round(min(l_vel, r_vel),6) # Capture the worst drop
+
+        # Determine which velocity to use based on affected side
+        affected_side = "None"
+        if left < right - 0.5:
+            affected_side = "Left"
+            score_velocity = l_vel if l_vel is not None else 0
+        elif right < left - 0.5:
+            affected_side = "Right"
+            score_velocity = r_vel if r_vel is not None else 0
+        else:
+            score_velocity = min(l_vel, r_vel) if (l_vel is not None and r_vel is not None) else 0
+
+        score_velocity = round(score_velocity, 6)
+
         volatility = calculate_stuttering_volatility(patient_data.get("id"), avg)
 
+        # Get all required features from patient_data
         sbp = float(patient_data.get("systolic_bp", 120))
+        dbp = float(patient_data.get("diastolic_bp", 80))  # NEW
         hba1c = float(patient_data.get("hba1c", 5.4))
-        sm = int(patient_data.get("smoking", 0))
+        blood_glucose = float(patient_data.get("blood_glucose", 100))  # NEW
+        diabetes_type = patient_data.get("diabetes_type", "None")  # NEW
+        bp_category = patient_data.get("bp_category", "Normal")  # NEW
+        on_bp_medication = int(patient_data.get("on_bp_medication", 0))  # NEW
+        sm = int(patient_data.get("smoking_history", patient_data.get("smoking", 0)))
 
+        # Encode categorical variables
+        diabetes_type_encoded = encode_diabetes_type(diabetes_type)  # You need to define this
+        bp_category_encoded = encode_bp_category(bp_category)  # You need to define this
+
+        # 2. Create input data with ALL expected features
         input_data = pd.DataFrame([[
-            left, right, asymmetry_index, sbp, hba1c, sm, score_velocity, volatility
-        ]], columns=['left_sensory_score', 'right_sensory_score', 'asymmetry_index',
-                     'systolic_bp', 'hba1c', 'smoking_history', 'score_velocity', 'volatility_index'])
+            left, right, asymmetry_index, sbp, dbp, hba1c, blood_glucose,
+            diabetes_type_encoded, bp_category_encoded, on_bp_medication,
+            sm, score_velocity, volatility
+        ]], columns=[
+            'left_sensory_score', 'right_sensory_score', 'asymmetry_index',
+            'systolic_bp', 'diastolic_bp', 'hba1c', 'blood_glucose',
+            'diabetes_type', 'bp_category', 'on_bp_medication',
+            'smoking_history', 'score_velocity', 'volatility_index'
+        ])
 
-        # 2. Get Prediction and Probabilities (To avoid cliff-edges)
+        # 3. Get Prediction and Probabilities
         prediction_code = int(model.predict(input_data)[0])
         probs = model.predict_proba(input_data)[0]
         confidence = max(probs)
 
+        # 4. Post-processing rules
+        # Override to bilateral if volatility high and velocity negative
         if volatility > 1.2 and score_velocity < -0.8:
             prediction_code = 4
 
-        # 3. Determine Affected Side & Bilateral Risk
-        # Even if model says unilateral, if both scores are low, it's Bilateral
-        if left < 6.0 and right < 6.0:
+        # 5. Determine Affected Side & Bilateral Risk
+        # Re-evaluate affected side after potential override
+        if prediction_code == 4 or (left < 6.0 and right < 6.0):
             affected_side = "Bilateral (Both Sides)"
         elif left < right - 0.5:
             affected_side = "Left"
@@ -145,10 +202,7 @@ def predict_with_model(patient_data):
         else:
             affected_side = "None"
 
-        #if score_velocity < -1.0:
-            #prediction_code = 4
-
-        # 4. Clinical Label Mapping (Based on your IMPACT_LEVELS)
+        # 6. Clinical Label Mapping
         impact_labels = {
             0: {"label": "Strong Response", "level": "low", "emoji": "🟢"},
             1: {"label": "Slightly Reduced", "level": "medium", "emoji": "🟡"},
@@ -157,14 +211,16 @@ def predict_with_model(patient_data):
             4: {"label": "Weak Global Response", "level": "critical", "emoji": "🟣"}
         }
 
-        res = impact_labels.get(prediction_code)
+        res = impact_labels.get(prediction_code, impact_labels[0])
 
-        # 5. Cliff-Edge Smoothing:
-        # If confidence is low, we soften the label to "Borderline"
-        # so the user isn't startled by a sudden change.
+        # 7. Cliff-Edge Smoothing
         display_label = res["label"]
         if confidence < 0.55:
             display_label = f"Borderline {display_label}"
+
+        # Add confidence-based qualifier
+        if confidence < 0.4:
+            display_label = f"Low Confidence: {display_label}"
 
         return {
             "prediction_code": prediction_code,
@@ -172,14 +228,17 @@ def predict_with_model(patient_data):
             "risk_level": res["level"],
             "state_emoji": res["emoji"],
             "affected_side": affected_side,
-            "model_confidence": round(confidence, 2),
+            "model_confidence": round(confidence, 3),
             "asymmetry_index": round(asymmetry_index, 3),
-            #"is_bilateral": prediction_code == 4 or affected_side == "Bilateral (Both Sides)"
-            "volatility": round(volatility, 3)
+            "volatility": round(volatility, 3),
+            "score_velocity": score_velocity,
+            "features_used": len(input_data.columns)
         }
 
     except Exception as ex:
         print(f"❌ Model prediction error: {ex}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -349,7 +408,7 @@ def api_predict_stroke():
             return render_template('error.html',
                                    error="Patient profile not found. Please complete your profile settings."), 404
 
-        # 3. Input Extraction and Validation
+        # 3. Input Extraction and Validation - EXPANDED for new fields
         try:
             left_score = float(request.form.get("left_asymmetry", 9.0))
             right_score = float(request.form.get("right_asymmetry", 9.0))
@@ -358,19 +417,41 @@ def api_predict_stroke():
             if not (0 <= left_score <= 10 and 0 <= right_score <= 10):
                 raise ValueError("Sensory scores must be between 0 and 10.")
 
+            # Get all required fields with fallbacks
             sbp = float(request.form.get("systolic_bp") or getattr(patient_info, 'systolic_bp', 120))
+            dbp = float(request.form.get("diastolic_bp") or getattr(patient_info, 'diastolic_bp', 80))
             hba1c = float(request.form.get("hba1c") or getattr(patient_info, 'hba1c', 5.4))
+            blood_glucose = float(request.form.get("blood_glucose") or getattr(patient_info, 'blood_glucose', 100))
             smoking = int(request.form.get("smoking") or getattr(patient_info, 'smoking_history', 0))
+
+            # Categorical fields
+            diabetes_type = request.form.get("diabetes_type") or getattr(patient_info, 'diabetes_type', 'None')
+            bp_category = request.form.get("bp_category") or getattr(patient_info, 'bp_category', 'Normal')
+            on_bp_medication = int(request.form.get("on_bp_medication") or getattr(patient_info, 'on_bp_medication', 0))
+
+            # Validate ranges
+            if not (60 <= dbp <= 130):
+                raise ValueError("Diastolic BP must be between 60 and 130 mmHg")
+            if not (70 <= blood_glucose <= 500):
+                raise ValueError("Blood glucose must be between 70 and 500 mg/dL")
+
         except ValueError as ve:
             logging.error(f"Validation Error: {ve}")
             return render_template('error.html', error=f"Invalid input data: {str(ve)}"), 400
 
-        # 4. Object Creation and Processing
+        # 4. Object Creation and Processing - FIXED to match new PatientDetails
         new_patient_details = PatientDetails(
-            user_id,
-            request.form.get("age_group") or getattr(patient_info, 'age_group', '50-59'),
-            request.form.get("sex") or getattr(patient_info, 'sex', 'Male'),
-            smoking
+            patient_id=user_id,
+            age_group=request.form.get("age_group") or getattr(patient_info, 'age_group', '50-59'),
+            sex=request.form.get("sex") or getattr(patient_info, 'sex', 'Male'),
+            systolic_bp=sbp,
+            hba1c=hba1c,
+            smoking_history=smoking,
+            diastolic_bp=dbp,
+            blood_glucose=blood_glucose,
+            diabetes_type=diabetes_type,
+            bp_category=bp_category,
+            on_bp_medication=on_bp_medication
         )
 
         # Calculate temporal features
@@ -380,25 +461,38 @@ def api_predict_stroke():
         avg_score = (left_score + right_score) / 2
         volatility = calculate_stuttering_volatility(user_id, avg_score)
 
+        # Calculate asymmetry index
+        asymmetry_index = abs(left_score - right_score) / (avg_score + 1)
+
         new_sensory = SensoryDetails(
-            left_score,
-            right_score,
-            "Determined by Model",
-            1 if abs(left_score - right_score) > 2.0 else 0,
+            left_sensory_score=left_score,
+            right_sensory_score=right_score,
+            systolic_bp=sbp,
+            hba1c=hba1c,
+            affected_side="Determined by Model",
+            asymmetry_label=1 if abs(left_score - right_score) > 2.0 else 0,
             score_velocity=current_velocity,
             volatility_index=volatility
         )
 
-        # 5. Prediction Logic
+        # 5. Prediction Logic - Updated with all 13 features
         patient_dict = {
             "id": user_id,
+            "patient_id": user_id,
             "left_sensory_score": left_score,
             "right_sensory_score": right_score,
             "systolic_bp": sbp,
+            "diastolic_bp": dbp,
             "hba1c": hba1c,
+            "blood_glucose": blood_glucose,
+            "diabetes_type": diabetes_type,
+            "bp_category": bp_category,
+            "on_bp_medication": on_bp_medication,
             "smoking": smoking,
+            "smoking_history": smoking,
             "score_velocity": current_velocity,
-            "volatility": volatility
+            "volatility": volatility,
+            "asymmetry_index": asymmetry_index
         }
 
         # Attempt ML Prediction, fallback to Threshold if model is missing or fails
@@ -408,30 +502,64 @@ def api_predict_stroke():
                 prediction = predict_with_model(patient_dict)
             except Exception as e:
                 logging.error(f"ML Prediction failed, falling back: {e}")
+                import traceback
+                traceback.print_exc()
 
         if not prediction:
             prediction = predict_stroke_threshold(patient_dict)
 
-        # 6. Database Persistence
+        # 6. Database Persistence - UPDATED for new Reading class
         try:
             from model.db.Reading import Reading
             reading = Reading(
                 patient_id=user_id,
                 timestamp=datetime.now(),
                 left_sensory_score=left_score,
-                right_sensory_score=right_score
+                right_sensory_score=right_score,
+                systolic_bp=sbp,
+                diastolic_bp=dbp,
+                hba1c=hba1c,
+                blood_glucose=blood_glucose,
+                diabetes_type=diabetes_type,
+                bp_category=bp_category,
+                on_bp_medication=on_bp_medication
             )
+
+            # Add calculated fields
+            reading.asymmetry_index = asymmetry_index
+            reading.score_velocity = current_velocity
+            reading.volatility_index = volatility
+
+            # Add prediction results if available
+            if prediction:
+                reading.prediction_tier = prediction.get('prediction_code')
+                reading.risk_label = prediction.get('sensory_response')
+                reading.affected_side = prediction.get('affected_side')
+                reading.model_confidence = prediction.get('model_confidence')
+
             dbmanager.insert('reading', reading)
         except Exception as db_err:
             logging.error(f"Failed to save reading to database: {db_err}")
+            import traceback
+            traceback.print_exc()
             # We continue even if saving fails so the user gets their immediate result
 
         return render_template('result.html',
-                               data={"prediction": prediction, "timestamp": datetime.now()},
+                               data={"prediction": prediction,
+                                     "timestamp": datetime.now(),
+                                     "patient_data": {
+                                         "scores": {"left": left_score, "right": right_score},
+                                         "bp": {"systolic": sbp, "diastolic": dbp},
+                                         "glucose": {"hba1c": hba1c, "blood_glucose": blood_glucose},
+                                         "conditions": {"diabetes_type": diabetes_type,
+                                                        "bp_category": bp_category}
+                                     }},
                                model_loaded=(model is not None))
 
     except Exception as ex:
         logging.critical(f"Uncaught Exception in api_predict_stroke: {ex}", exc_info=True)
+        import traceback
+        traceback.print_exc()
         return render_template('error.html',
                                error="An unexpected system error occurred. Our team has been notified."), 500
 

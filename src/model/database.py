@@ -141,14 +141,30 @@ def get_patient_baseline(patient_id):
     try:
         cursor = conn.cursor(dictionary=True)
         query = """
-            SELECT AVG(left_sensory_score) as avg_left, AVG(right_sensory_score) as avg_right
-            FROM reading
-            WHERE patient_id = ?
-            ORDER BY timestamp DESC LIMIT 10 
-            """
+                SELECT
+                    AVG(left_sensory_score) as avg_left,
+                    AVG(right_sensory_score) as avg_right,
+                    AVG(systolic_bp) as avg_systolic,
+                    AVG(diastolic_bp) as avg_diastolic,
+                    AVG(hba1c) as avg_hba1c,
+                    AVG(blood_glucose) as avg_blood_glucose,
+                    AVG(volatility_index) as avg_volatility
+                FROM reading
+                WHERE patient_id = ?
+                ORDER BY timestamp DESC
+                    LIMIT 10 \
+                """
         cursor.execute(query, (patient_id,))
         baseline = cursor.fetchone()
-        return baseline if baseline['avg_left'] else {"avg_left": 10.0, "avg_right": 10.0}
+        # Return with defaults if no data
+        if not baseline or baseline['avg_left'] is None:
+            return {
+                "avg_left": 9.0, "avg_right": 9.0,
+                "avg_systolic": 120, "avg_diastolic": 80,
+                "avg_hba1c": 5.4, "avg_blood_glucose": 100,
+                "avg_volatility": 0.3
+            }
+        return baseline
     finally:
         conn.close()
 
@@ -165,11 +181,13 @@ def get_reading_velocity(patient_id):
 
         # CHANGE 1: LIMIT 2 → LIMIT 5
         query = """
-                SELECT timestamp, left_sensory_score, right_sensory_score
+                SELECT timestamp, left_sensory_score, right_sensory_score,
+                       systolic_bp, diastolic_bp, hba1c, blood_glucose,
+                       volatility_index
                 FROM reading
                 WHERE patient_id = %s
                 ORDER BY timestamp DESC
-                LIMIT 5
+                    LIMIT 5
                 """
         cursor.execute(query, (patient_id,))
         readings = cursor.fetchall()
@@ -253,11 +271,14 @@ def get_recent_readings(patient_id, limit=5):
     try:
         cursor = conn.cursor(dictionary=True)
         query = """
-                SELECT left_sensory_score, right_sensory_score, timestamp
+                SELECT left_sensory_score, right_sensory_score, timestamp,
+                       systolic_bp, diastolic_bp, hba1c, blood_glucose,
+                       diabetes_type, bp_category, on_bp_medication,
+                       asymmetry_index, score_velocity, volatility_index
                 FROM reading
                 WHERE patient_id = ?
                 ORDER BY timestamp DESC
-                    LIMIT ? \
+                    LIMIT ?
                 """
         cursor.execute(query, (patient_id, limit))
         return cursor.fetchall()
@@ -286,6 +307,7 @@ def generate_sample_data():
     """
     Updated to use Gaussian distributions (Ref 1),
     Continuous Systolic BP (Ref 5), and HbA1c (Ref 6).
+    Now includes all new fields for comprehensive stroke risk assessment.
     """
     total_patients = 100
     print(f"🚀 Starting data generation with Gaussian/Continuous biological logic...")
@@ -299,6 +321,19 @@ def generate_sample_data():
         )
         user_id = insert("user", user)
 
+        # Generate patient conditions
+        has_hypertension = random.random() < 0.3
+        has_diabetes = random.random() < 0.2
+        on_bp_meds = has_hypertension and random.random() < 0.6
+
+        # Determine diabetes type if diabetic
+        diabetes_type = "None"
+        if has_diabetes:
+            diabetes_type = random.choices(
+                ["Type 1", "Type 2", "Prediabetes", "Gestational"],
+                weights=[0.1, 0.7, 0.15, 0.05]
+            )[0]
+
         patient_info = Patient_Info(
             id=user_id,
             age_group=random.choice(["30-39", "40-49", "50-59", "60-69", "70-79", "80+"]),
@@ -306,46 +341,111 @@ def generate_sample_data():
             smoking_history=random.choice([0, 1]),
             first_name=f"Patient_{i}",
             last_name=f"Test_{i}"
-            #doctor_id=None,               Added (optional)
-            #notes=f"Sample patient {i}"   Added (optional)
+            # Add new fields if your Patient_Info class has them:
+            # systolic_bp=...,
+            # diastolic_bp=...,
+            # hba1c=...,
+            # blood_glucose=...,
+            # diabetes_type=diabetes_type,
+            # bp_category=...,
+            # on_bp_medication=on_bp_meds
         )
         insert("patient_info", patient_info)
 
-        # Ref 5 & 6: Continuous Vital Mapping
-        is_hypertensive = random.random() < 0.3
-        is_diabetic = random.random() < 0.2
-
         # Gaussian distribution for BP and HbA1c
-        base_systolic_bp = int(random.gauss(165, 15)) if is_hypertensive else int(random.gauss(122, 10))
-        base_hba1c = round(random.gauss(7.8, 1.2), 1) if is_diabetic else round(random.gauss(5.2, 0.3), 1)
+        if has_hypertension:
+            base_systolic_bp = int(random.gauss(145, 15))
+            base_diastolic_bp = int(random.gauss(95, 10))
+            bp_category = random.choices(
+                ["Hypertension Stage 1", "Hypertension Stage 2"],
+                weights=[0.6, 0.4]
+            )[0]
+        else:
+            base_systolic_bp = int(random.gauss(118, 8))
+            base_diastolic_bp = int(random.gauss(78, 5))
+            bp_category = "Normal" if random.random() < 0.7 else "Elevated"
+
+        # Blood glucose based on diabetes status
+        if has_diabetes:
+            base_hba1c = round(random.gauss(7.5, 1.0), 1)
+            base_blood_glucose = int(random.gauss(180, 40))
+        else:
+            base_hba1c = round(random.gauss(5.2, 0.3), 1)
+            base_blood_glucose = int(random.gauss(100, 15))
 
         # Ref 1: Gaussian Biological Data (Mean 9.0 for healthy)
         base_left = random.gauss(9.0, 0.5)
         base_right = random.gauss(9.0, 0.5)
 
+        previous_left = base_left
+        previous_right = base_right
+
         for x in range(10):
+            # Add biological noise
             noise_l = random.normalvariate(0, 0.3)
             noise_r = random.normalvariate(0, 0.3)
 
-            current_systolic_bp = base_systolic_bp + random.uniform(-5, 5)
-            current_hba1c = base_hba1c + random.uniform(-0.3, 0.3)
+            # Vary vital signs slightly each reading
+            current_systolic_bp = max(90, min(220, base_systolic_bp + random.uniform(-8, 8)))
+            current_diastolic_bp = max(60, min(130, base_diastolic_bp + random.uniform(-5, 5)))
+            current_hba1c = max(4.0, min(14.0, base_hba1c + random.uniform(-0.2, 0.2)))
+            current_blood_glucose = max(70, min(500, base_blood_glucose + random.randint(-20, 20)))
+
+            # Calculate current sensory scores with potential decline
+            current_left = round(max(0, min(10, previous_left + noise_l)), 2)
+            current_right = round(max(0, min(10, previous_right + noise_r)), 2)
+
+            # Calculate derived metrics
+            avg_score = (current_left + current_right) / 2
+            asymmetry_index = abs(current_left - current_right) / (avg_score + 1)
+
+            # Simulate velocity for some patients
+            score_velocity = 0.0
+            if x > 0:
+                # Some patients show decline (simulating stroke progression)
+                if i % 7 == 0:  # ~14% show decline
+                    decline_rate = random.uniform(-0.05, -0.01)
+                    current_left = max(0, current_left + decline_rate)
+                    current_right = max(0, current_right + decline_rate)
+
+            # Calculate volatility from recent trend
+            volatility_index = random.uniform(0.1, 0.5)  # Base volatility
+
+            # For stroke patients, higher volatility
+            if i % 10 == 0:  # 10% are simulated stroke patients
+                volatility_index = random.uniform(1.5, 2.5)
+                # More asymmetric scores for stroke patients
+                if random.random() < 0.7:
+                    asymmetry_factor = random.uniform(0.3, 1.5)
+                    if random.choice([True, False]):
+                        current_left = max(0, current_left - asymmetry_factor)
+                    else:
+                        current_right = max(0, current_right - asymmetry_factor)
 
             reading = Reading(
                 patient_id=user_id,
                 timestamp=datetime.now() - timedelta(hours=((10-x)*3)),
                 systolic_bp=current_systolic_bp,
+                diastolic_bp=current_diastolic_bp,
                 hba1c=current_hba1c,
-                left_sensory_score=round(max(0, min(10, base_left + noise_l)), 2),
-                right_sensory_score=round(max(0, min(10, base_right + noise_r)), 2)
+                blood_glucose=current_blood_glucose,
+                diabetes_type=diabetes_type,
+                bp_category=bp_category,
+                on_bp_medication=on_bp_meds,
+                left_sensory_score=current_left,
+                right_sensory_score=current_right,
+                asymmetry_index=round(asymmetry_index, 3),
+                score_velocity=round(score_velocity, 6),
+                volatility_index=round(volatility_index, 3)
             )
 
-            # Simulate slight decline for some patients to create 'stuttering' history
-            if i % 5 == 0: # 20% of sample patients have fluctuating/declining scores
-                base_left -= random.uniform(0.1, 0.4)
+            # Update for next iteration
+            previous_left = current_left
+            previous_right = current_right
 
             insert("reading", reading)
 
-    print("\n✅ Successfully generated history with Volatility and Continuous health markers!")
+    print("\n✅ Successfully generated history with all 13 features for comprehensive stroke assessment!")
 
 def toCSV(itemlist, filename):
     master_df = pd.DataFrame([p.__dict__ for p in itemlist])

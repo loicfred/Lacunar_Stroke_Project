@@ -10,6 +10,23 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "data_simulation", "master_data", "stroke_training_data.csv")
 MODEL_SAVE_PATH = os.path.join(BASE_DIR, "model", "stroke_model.pkl")
 
+DIABETES_TYPE_ENCODING = {
+    "None": 0,
+    "Type 1": 1,
+    "Type 2": 2,
+    "Gestational": 3,
+    "Prediabetes": 4,
+    "Other": 5
+}
+
+BP_CATEGORY_ENCODING = {
+    "Normal": 0,
+    "Elevated": 1,
+    "Hypertension Stage 1": 2,
+    "Hypertension Stage 2": 3,
+    "Hypertensive Crisis": 4
+}
+
 IMPACT_LEVELS = {
     0: "Strong Response",
     1: "Slightly Reduced",
@@ -17,6 +34,24 @@ IMPACT_LEVELS = {
     3: "Significantly Reduced",
     4: "Weak Global Response"
 }
+
+def encode_categorical_features(df):
+    """Encode categorical string columns to numeric values."""
+    df_encoded = df.copy()
+
+    # Encode diabetes_type
+    if 'diabetes_type' in df_encoded.columns:
+        df_encoded['diabetes_type'] = df_encoded['diabetes_type'].map(
+            lambda x: DIABETES_TYPE_ENCODING.get(x, 0)
+        )
+
+    # Encode bp_category
+    if 'bp_category' in df_encoded.columns:
+        df_encoded['bp_category'] = df_encoded['bp_category'].map(
+            lambda x: BP_CATEGORY_ENCODING.get(x, 0)
+        )
+
+    return df_encoded
 
 def train_production_model():
     if not os.path.exists(DATA_PATH):
@@ -31,16 +66,29 @@ def train_production_model():
         # Simulating volatility for training data consistency
         df['volatility_index'] = df.apply(lambda x: np.random.uniform(0.1, 2.5) if x['impact_tier'] > 0 else np.random.uniform(0, 0.3), axis=1)
 
+    df = encode_categorical_features(df)
+
     features = [
         'left_sensory_score',
         'right_sensory_score',
         'asymmetry_index',
-        'systolic_bp',      # Continuous (Ref 5)
-        'hba1c',            # Continuous (Ref 6)
+        'systolic_bp',
+        'diastolic_bp',        # NEW
+        'hba1c',
+        'blood_glucose',       # NEW
+        'diabetes_type',       # NEW (encode this)
+        'bp_category',         # NEW (encode this)
+        'on_bp_medication',    # NEW
         'smoking_history',
         'score_velocity',
-        'volatility_index'  # Stuttering pattern (Ref 3)
+        'volatility_index'
     ]
+
+    # Check data types
+    print("\n📊 Feature Data Types:")
+    for feature in features:
+        if feature in df.columns:
+            print(f"  - {feature}: {df[feature].dtype}")
 
     X = df[features]
     y = df['impact_tier']
@@ -58,6 +106,17 @@ def train_production_model():
     unique_tiers = sorted(y.unique())
     target_names = [IMPACT_LEVELS[t] for t in unique_tiers]
     print(classification_report(y_test, y_pred, target_names=target_names))
+
+    # Feature importance
+    print("\n💡 Feature Importance:")
+    importances = model.feature_importances_
+    feature_importance = pd.DataFrame({
+        'feature': features,
+        'importance': importances
+    }).sort_values('importance', ascending=False)
+
+    for _, row in feature_importance.iterrows():
+        print(f"  - {row['feature']}: {row['importance']:.3%}")
 
     joblib.dump(model, MODEL_SAVE_PATH)
     print(f"💾 Model saved successfully to: {MODEL_SAVE_PATH}")

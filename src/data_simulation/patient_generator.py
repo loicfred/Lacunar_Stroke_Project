@@ -73,16 +73,74 @@ def generate_stuttering_pattern(base_score, impact_tier, num_readings=5):
 
 
 def generate_single_patient_details(patient_id: int) -> PatientDetails:
-    # Logic for underlying condition probability
+    # Generate conditions
     has_htn = random.random() < 0.3
     has_db = random.random() < 0.2
 
-    return PatientDetails(patient_id,
-                          random.choice(AGE_GROUPS),
-                          random.choice(SEXES),
-                          #generate_vitals(has_htn),
-                          #generate_metabolic_data(has_db),
-                          random.choice([0, 1]))
+    # Generate BP values
+    systolic, diastolic = generate_bp_values(has_htn)
+
+    # Determine BP category based on values
+    bp_category = determine_bp_category(systolic, diastolic)
+
+    # Determine diabetes type if diabetic
+    diabetes_type = "None"
+    if has_db:
+        diabetes_type = random.choices(["Type 1", "Type 2", "Gestational"],
+                                       weights=[0.1, 0.85, 0.05])[0]
+
+    # Generate blood glucose (correlated with HbA1c)
+    hba1c_value = generate_metabolic_data(has_db)
+    blood_glucose = generate_blood_glucose(hba1c_value, has_db)
+
+    # Determine if on BP medication (higher chance if hypertensive)
+    on_bp_medication = has_htn and random.random() < 0.6
+
+    return PatientDetails(
+        patient_id=patient_id,
+        age_group=random.choice(AGE_GROUPS),
+        sex=random.choice(SEXES),
+        systolic_bp=systolic,
+        diastolic_bp=diastolic,
+        hba1c=hba1c_value,
+        blood_glucose=blood_glucose,
+        diabetes_type=diabetes_type,
+        bp_category=bp_category,
+        on_bp_medication=on_bp_medication,
+        smoking_history=random.choice([0, 1])
+    )
+
+def generate_bp_values(has_hypertension):
+    """Generate both systolic and diastolic BP"""
+    if has_hypertension:
+        systolic = int(random.gauss(145, 15))
+        diastolic = int(random.gauss(95, 10))
+    else:
+        systolic = int(random.gauss(118, 8))
+        diastolic = int(random.gauss(78, 5))
+
+    return max(90, min(220, systolic)), max(60, min(130, diastolic))
+
+def determine_bp_category(systolic, diastolic):
+    """Determine BP category based on JNC 8 guidelines"""
+    if systolic < 120 and diastolic < 80:
+        return "Normal"
+    elif systolic < 130 and diastolic < 80:
+        return "Elevated"
+    elif systolic < 140 or diastolic < 90:
+        return "Hypertension Stage 1"
+    else:
+        return "Hypertension Stage 2"
+
+def generate_blood_glucose(hba1c, has_diabetes):
+    """Generate random blood glucose correlated with HbA1c"""
+    if has_diabetes:
+        base = random.gauss(180, 40)  # Higher for diabetics
+    else:
+        # Convert HbA1c to estimated average glucose
+        base = (28.7 * hba1c) - 46.7
+
+    return round(max(70, min(500, base)), 0)
 
 #def generate_batch_patient_details(quantity: int) -> list:
     #if quantity > 5000: raise ValueError("Maximum allowed simulated patients is 5000")
@@ -269,7 +327,7 @@ def generate_sensory_with_velocity(patient_info=None):
 
     current_sensory.score_velocity = round(velocity, 6)
 
-    # Calculate volatility from stuttering pattern
+    # ENHANCED VOLATILITY CALCULATION FOR LACUNAR STROKE PATTERNS
     if hasattr(current_sensory, 'stuttering_pattern') and current_sensory.stuttering_pattern:
         # Combine both sides for volatility calculation
         all_scores = []
@@ -279,23 +337,134 @@ def generate_sensory_with_velocity(patient_info=None):
             all_scores.extend(current_sensory.stuttering_pattern['healthy_side'])
 
         if all_scores:
-            current_sensory.volatility_index = round(float(np.std(all_scores)), 3)
+            # Calculate base volatility
+            base_volatility = float(np.std(all_scores))
+
+            # ENHANCE VOLATILITY FOR LACUNAR STROKE PATTERNS
+            # Lacunar infarcts (tiers 2-3) should show pronounced stuttering
+            if current_sensory.impact_tier in [2, 3]:  # Moderate to severe unilateral
+                # Add additional noise to simulate lacunar stuttering
+                noisy_scores = [score + random.gauss(0, 0.4) for score in all_scores]
+                base_volatility = float(np.std(noisy_scores))
+
+                # Ensure minimum volatility for lacunar patterns
+                if current_sensory.impact_tier == 2:  # Moderate
+                    base_volatility = max(1.5, base_volatility)
+                else:  # Severe (tier 3)
+                    base_volatility = max(2.0, base_volatility)
+
+            # Cap volatility at reasonable maximum
+            base_volatility = min(base_volatility, 3.5)
+
+            current_sensory.volatility_index = round(base_volatility, 3)
         else:
-            current_sensory.volatility_index = round(random.uniform(0.1, 0.8), 3)
+            # Fallback with clinical ranges for lacunar strokes
+            clinical_volatility_ranges = {
+                0: (0.1, 0.5),    # Normal: minimal fluctuation
+                1: (0.5, 1.2),    # Mild unilateral: some variability
+                2: (1.5, 2.5),    # Moderate unilateral: LACUNAR PATTERN RANGE
+                3: (2.0, 3.5),    # Severe unilateral: PRONOUNCED LACUNAR
+                4: (0.5, 1.5)     # Bilateral: more consistent deficit
+            }
+            min_v, max_v = clinical_volatility_ranges.get(current_sensory.impact_tier, (0.1, 1.0))
+            current_sensory.volatility_index = round(random.uniform(min_v, max_v), 3)
     else:
-        # Fallback volatility
-        if current_sensory.impact_tier > 1:
-            current_sensory.volatility_index = round(random.uniform(0.5, 2.0), 3)
-        else:
-            current_sensory.volatility_index = round(random.uniform(0.1, 0.8), 3)
+        # Clinical volatility ranges based on impact tier
+        clinical_volatility_ranges = {
+            0: (0.1, 0.5),    # Normal
+            1: (0.5, 1.2),    # Mild unilateral risk
+            2: (1.5, 2.5),    # Moderate unilateral - LACUNAR INFARCT
+            3: (2.0, 3.5),    # Severe unilateral - PRONOUNCED LACUNAR
+            4: (0.5, 1.5)     # Bilateral neuropathy
+        }
+
+        min_v, max_v = clinical_volatility_ranges.get(current_sensory.impact_tier, (0.1, 1.0))
+        current_sensory.volatility_index = round(random.uniform(min_v, max_v), 3)
+
+    # ADDITIONAL VALIDATION: Ensure volatility aligns with clinical presentation
+    if current_sensory.impact_tier in [2, 3] and current_sensory.volatility_index < 1.2:
+        # Lacunar strokes should not have low volatility - adjust upward
+        current_sensory.volatility_index = round(random.uniform(1.5, 2.8), 3)
 
     return current_sensory
 
-def generate_batch_patients_data(quantity: int = 5000) -> list:
-    if quantity > 5000: raise ValueError("Maximum allowed simulated patients is 5000")
+
+def generate_patient_timeline(patient_id, num_readings=5):
+    """Generate multiple readings for the same patient over time"""
+    patient_info = generate_single_patient_details(patient_id)
+    timeline = []
+
+    for i in range(num_readings):
+        # Each reading should show progression/regression
+        sensory = generate_single_sensory_details(patient_info)
+
+        # Add temporal component (worsening/improving over time)
+        if i > 0:
+            # Adjust based on stroke progression
+            if sensory.impact_tier > 0:
+                # Lacunar strokes fluctuate
+                fluctuation = random.gauss(0, 0.3)
+                sensory.left_sensory_score = max(0, sensory.left_sensory_score + fluctuation)
+                sensory.right_sensory_score = max(0, sensory.right_sensory_score + fluctuation)
+
+        timeline.append(sensory)
+
+    # Calculate REAL volatility from the timeline
+    left_scores = [s.left_sensory_score for s in timeline]
+    right_scores = [s.right_sensory_score for s in timeline]
+    all_scores = left_scores + right_scores
+
+    real_volatility = np.std(all_scores) if len(all_scores) > 1 else 0
+
+    # For the "current" patient record, use the last reading with calculated volatility
+    current_sensory = timeline[-1]
+
+    # Update the sensory object with calculated values
+    current_sensory.volatility_index = round(real_volatility, 3)
+
+    # Calculate velocity (change over time)
+    if len(timeline) >= 2:
+        time_hours = 24 * (len(timeline) - 1)  # Assuming 24h between readings
+        score_change = current_sensory.left_sensory_score - timeline[0].left_sensory_score
+        current_sensory.score_velocity = round(score_change / time_hours, 6)
+    else:
+        current_sensory.score_velocity = 0
+
+    # Calculate asymmetry index (this should already be in SensoryDetails)
+    if hasattr(current_sensory, 'left_sensory_score') and hasattr(current_sensory, 'right_sensory_score'):
+        if current_sensory.left_sensory_score + current_sensory.right_sensory_score > 0:
+            asymmetry = abs(current_sensory.left_sensory_score - current_sensory.right_sensory_score) / \
+                        (current_sensory.left_sensory_score + current_sensory.right_sensory_score)
+            current_sensory.asymmetry_index = round(asymmetry, 3)
+
+    return Patient.create(patient_info, current_sensory)
+
+
+def generate_batch_patients_data(quantity: int = 5000, use_timeline: bool = True) -> list:
+    """
+    Generate batch patient data.
+
+    Args:
+        quantity: Number of patients to generate
+        use_timeline: If True, generates realistic patient timelines with
+                     calculated volatility from multiple readings.
+                     If False, uses the old method with simulated volatility.
+    """
+    if quantity > 5000:
+        raise ValueError("Maximum allowed simulated patients is 5000")
+
     patient_list = []
+
     for i in range(1, quantity + 1):
-        patient_info = generate_single_patient_details(i)
-        sensory = generate_sensory_with_velocity(patient_info)
-        patient_list.append(Patient.create(patient_info, sensory))
+        if use_timeline:
+            # Use the improved timeline method (RECOMMENDED)
+            patient = generate_patient_timeline(i, num_readings=5)
+        else:
+            # Old method (for comparison only)
+            patient_info = generate_single_patient_details(i)
+            sensory = generate_sensory_with_velocity(patient_info)
+            patient = Patient.create(patient_info, sensory)
+
+        patient_list.append(patient)
+
     return patient_list
