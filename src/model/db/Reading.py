@@ -3,6 +3,7 @@ class Reading:
         self.id = kwargs.get("id")
         self.patient_id = kwargs.get("patient_id")
         self.timestamp = kwargs.get("timestamp")
-        self.blood_pressure = kwargs.get("blood_pressure")
+        self.systolic_bp = kwargs.get("systolic_bp")  # ✅ Continuous, per reading
+        self.hba1c = kwargs.get("hba1c")              # ✅ Continuous, per reading
         self.left_sensory_score = kwargs.get("left_sensory_score")
         self.right_sensory_score = kwargs.get("right_sensory_score")

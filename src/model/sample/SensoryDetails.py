@@ -1,17 +1,18 @@
 from datetime import datetime
 
 class SensoryDetails:
-    def __init__(self, left_sensory_score, right_sensory_score, blood_pressure, affected_side, asymmetry_label, impact_tier=0, score_velocity=0.):
+    def __init__(self, left_sensory_score, right_sensory_score, systolic_bp, hba1c,
+                 affected_side, asymmetry_label, impact_tier=0, score_velocity=0., volatility_index=0.):
         self.left_sensory_score = left_sensory_score
         self.right_sensory_score = right_sensory_score
-        self.blood_pressure = blood_pressure
+        self.systolic_bp = systolic_bp    # ✅ Yes, belongs here since it's per reading
+        self.hba1c = hba1c                # ✅ Yes, belongs here since it's per reading
         self.affected_side = affected_side
         self.asymmetry_label = asymmetry_label
         self.impact_tier = impact_tier
         self.score_velocity = score_velocity
-
+        self.volatility_index = volatility_index
         self.timestamp = datetime.now()
-
         self.asymmetry_index = self.calculate_asymmetry_index()
         self.response_strength = None
 

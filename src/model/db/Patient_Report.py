@@ -7,12 +7,14 @@ class Patient_Report:
         self.patient_id = kwargs.get("patient_id")
         self.age_group = kwargs.get("age_group")
         self.sex = kwargs.get("sex")
-        self.diabetes = kwargs.get("diabetes")
+        self.systolic_bp = kwargs.get("systolic_bp")  # Continuous
+        self.hba1c = kwargs.get("hba1c")              # Continuous
         self.smoking_history = kwargs.get("smoking_history")
         self.first_name = kwargs.get("first_name")
         self.last_name = kwargs.get("last_name")
 
-        self.highest_blood_pressure = kwargs.get("highest_blood_pressure")
+        self.highest_systolic_bp = kwargs.get("highest_reading_systolic_bp")  # Renamed
+        self.highest_hba1c = kwargs.get("highest_reading_hba1c")              # Add this
         self.highest_reading_timestamp = kwargs.get("highest_reading_timestamp")
         self.highest_reading_left_sensory_score = kwargs.get("highest_reading_left_sensory_score")
         self.highest_reading_right_sensory_score = kwargs.get("highest_reading_right_sensory_score")
@@ -21,7 +23,8 @@ class Patient_Report:
         self.highest_reading_asymmetry_index = kwargs.get("highest_reading_asymmetry_index")
         self.highest_reading_risk_label = kwargs.get("highest_reading_risk_label")
 
-        self.avg_blood_pressure = kwargs.get("avg_blood_pressure")
+        self.avg_systolic_bp  = kwargs.get("avg_systolic_bp")
+        self.avg_hba1c = kwargs.get("avg_hba1c")
         self.avg_left_sensory_score = kwargs.get("avg_left_sensory_score")
         self.avg_right_sensory_score = kwargs.get("avg_right_sensory_score")
         self.avg_asymmetry_difference = kwargs.get("avg_asymmetry_difference")
@@ -29,7 +32,8 @@ class Patient_Report:
         self.avg_asymmetry_index = kwargs.get("avg_asymmetry_index")
         self.avg_risk_label = kwargs.get("avg_risk_label")
 
-        self.latest_reading_blood_pressure = kwargs.get("latest_reading_blood_pressure")
+        self.latest_reading_systolic_bp  = kwargs.get("latest_reading_systolic_bp")
+        self.latest_reading_hba1c = kwargs.get("latest_reading_hba1c")
         self.latest_reading_timestamp = kwargs.get("latest_reading_timestamp")
         self.latest_reading_left_sensory_score = kwargs.get("latest_reading_left_sensory_score")
         self.latest_reading_right_sensory_score = kwargs.get("latest_reading_right_sensory_score")
