@@ -316,7 +316,9 @@ def generate_sample_data():
             sex=random.choice(["Male", "Female"]),
             smoking_history=random.choice([0, 1]),
             first_name=f"Patient_{i}",
-            last_name=f"Test_{i}"
+            last_name=f"Test_{i}",
+            doctor_id=1,
+            notes=f"Patient {i} notes"
         )
         insert("patient_info", patient_info)
 
