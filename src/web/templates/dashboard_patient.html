@@ -554,8 +554,8 @@
                 {% for reading in readings %}
                 <tr>
                     <td>{{ reading.timestamp.strftime('%Y-%m-%d %H:%M') if reading.timestamp else 'N/A' }}</td>
-                    <td>{{ reading.systolic_bp | round(2) if reading.systolic_bp else '0.0' }}</td>
-                    <td>{{ reading.hba1c | round(2) if reading.hba1c else '0.0' }}</td>
+                    <td>{{ reading.systolic_bp if reading.systolic_bp else '0.0' }}</td>
+                    <td>{{ reading.hba1c if reading.hba1c else '0.0' }}</td>
                     <td>{{ reading.left_sensory_score | round(2) if reading.left_sensory_score else '0.0' }}</td>
                     <td>{{ reading.right_sensory_score | round(2) if reading.right_sensory_score else '0.0' }}</td>
                     <td><strong>

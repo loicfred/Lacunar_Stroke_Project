@@ -149,7 +149,7 @@ def get_patient_baseline(patient_id):
                     AVG(hba1c) as avg_hba1c,
                     AVG(blood_glucose) as avg_blood_glucose,
                     AVG(volatility_index) as avg_volatility
-                FROM reading
+                FROM detailed_reading
                 WHERE patient_id = ?
                 ORDER BY timestamp DESC
                     LIMIT 10 \
@@ -184,7 +184,7 @@ def get_reading_velocity(patient_id):
                 SELECT timestamp, left_sensory_score, right_sensory_score,
                        systolic_bp, diastolic_bp, hba1c, blood_glucose,
                        volatility_index
-                FROM reading
+                FROM detailed_reading
                 WHERE patient_id = %s
                 ORDER BY timestamp DESC
                     LIMIT 5
@@ -262,36 +262,12 @@ def get_reading_velocity(patient_id):
             conn.close()
 
 
-def get_recent_readings(patient_id, limit=5):
-    """
-    Fetches the most recent readings for volatility calculation.
-    Required for identifying the 'stuttering pattern' of lacunar strokes.
-    """
-    conn = get_connection()
-    try:
-        cursor = conn.cursor(dictionary=True)
-        query = """
-                SELECT left_sensory_score, right_sensory_score, timestamp,
-                       systolic_bp, diastolic_bp, hba1c, blood_glucose,
-                       diabetes_type, bp_category, on_bp_medication,
-                       asymmetry_index, score_velocity, volatility_index
-                FROM reading
-                WHERE patient_id = ?
-                ORDER BY timestamp DESC
-                    LIMIT ?
-                """
-        cursor.execute(query, (patient_id, limit))
-        return cursor.fetchall()
-    finally:
-        conn.close()
-
-
 def calculate_volatility_index(patient_id):
     """
     Calculates the standard deviation of the last 5 readings (Ref 3).
     High volatility + Downward trend = High probability of active stroke.
     """
-    readings = get_recent_readings(patient_id, limit=5)
+    readings = getAllWhere('detailed_reading', 'patient_id = ? ORDER BY timestamp DESC LIMIT 5', patient_id)
 
     if len(readings) < 2:
         return 0.0
@@ -341,14 +317,6 @@ def generate_sample_data():
             smoking_history=random.choice([0, 1]),
             first_name=f"Patient_{i}",
             last_name=f"Test_{i}"
-            # Add new fields if your Patient_Info class has them:
-            # systolic_bp=...,
-            # diastolic_bp=...,
-            # hba1c=...,
-            # blood_glucose=...,
-            # diabetes_type=diabetes_type,
-            # bp_category=...,
-            # on_bp_medication=on_bp_meds
         )
         insert("patient_info", patient_info)
 
