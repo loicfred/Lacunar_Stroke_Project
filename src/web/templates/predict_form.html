@@ -437,6 +437,111 @@
                     <label for="smoking">✅ Smoking History</label>
                 </div>
             </div>
+            <!-- Diabetes and Blood Pressure Input Fields -->
+            <div style="margin-top: 25px; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e0e0e0;">
+                <h4 style="margin-top: 0; color: #14005c; margin-bottom: 20px;">📊 Diabetes & Blood Pressure Details</h4>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                    <!-- Diabetes Details -->
+                    <div>
+                        <h5 style="color: #d32f2f; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-vial" style="font-size: 16px;"></i> Diabetes Information
+                        </h5>
+
+                        <div style="margin-bottom: 15px;">
+                            <label for="diabetes_type" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                Diabetes Type:
+                            </label>
+                            <select id="diabetes_type" name="diabetes_type" class="form-select"
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">Select Type</option>
+                                <option value="none">No Diabetes</option>
+                                <option value="type1">Type 1 Diabetes</option>
+                                <option value="type2">Type 2 Diabetes</option>
+                                <option value="gestational">Gestational Diabetes</option>
+                                <option value="prediabetes">Pre-diabetes</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label for="blood_glucose" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                Blood Glucose (mg/dL):
+                            </label>
+                            <input type="number" id="blood_glucose" name="blood_glucose"
+                                   min="50" max="500" step="1"
+                                   placeholder="e.g., 120"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label for="hba1c" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                HbA1c (%):
+                            </label>
+                            <input type="number" id="hba1c" name="hba1c"
+                                   min="4.0" max="15.0" step="0.1"
+                                   placeholder="e.g., 6.5"
+                                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        </div>
+                    </div>
+
+                    <!-- Blood Pressure Details -->
+                    <div>
+                        <h5 style="color: #1976d2; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-heartbeat" style="font-size: 16px;"></i> Blood Pressure Information
+                        </h5>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label for="systolic_bp" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                    Systolic (mmHg):
+                                </label>
+                                <input type="number" id="systolic_bp" name="systolic_bp"
+                                       min="80" max="250" step="1"
+                                       placeholder="e.g., 120"
+                                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                            </div>
+
+                            <div>
+                                <label for="diastolic_bp" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                    Diastolic (mmHg):
+                                </label>
+                                <input type="number" id="diastolic_bp" name="diastolic_bp"
+                                       min="50" max="150" step="1"
+                                       placeholder="e.g., 80"
+                                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label for="bp_category" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                BP Category:
+                            </label>
+                            <select id="bp_category" name="bp_category" class="form-select"
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">Select Category</option>
+                                <option value="normal">Normal (<120/80)</option>
+                                <option value="elevated">Elevated (120-129/<80)</option>
+                                <option value="stage1">Stage 1 Hypertension (130-139/80-89)</option>
+                                <option value="stage2">Stage 2 Hypertension (≥140/≥90)</option>
+                                <option value="crisis">Hypertensive Crisis (>180/>120)</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label for="bp_medication" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                                On BP Medication:
+                            </label>
+                            <select id="bp_medication" name="bp_medication" class="form-select"
+                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">Select</option>
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                                <option value="irregular">Irregular/As needed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Demographic info for test cases -->
             <div style="margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
