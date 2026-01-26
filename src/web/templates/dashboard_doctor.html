@@ -89,6 +89,8 @@
                         <th>Patient</th>
                         <th>Age</th>
                         <th>Last Reading</th>
+                        <th>Systolic BP<th>
+                        <th>Hba1c</th>
                         <th>Asymmetry</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -102,6 +104,8 @@
                         <td><strong>{{patient.first_name}} {{patient.last_name}}</strong></td>
                         <td>{{patient.age_group}}</td>
                         <td>{{patient.latest_reading_timestamp}}</td>
+                        <td>{{patient.latest_reading_systolic_bp}}</td>
+                        <td>{{patient.latest_reading_hba1c}}</td>
                         <td>{{(patient.latest_reading_asymmetry_index*100) | round(2)}}</td>
 
                         <td><span class="table-badge status-{% if patient.latest_reading_risk_label == 'Critical' %}critical{% elif patient.latest_reading_risk_label == 'Borderline' %}borderline{% else %}normal{% endif %}">{{patient.latest_reading_risk_label}}</span></td>

@@ -8,12 +8,12 @@ def run_comprehensive_test():
     # 1. GENERATE TRAINING DATA
     # We generate 500 patients to ensure the model sees enough Bilateral (10%) cases
     print("📊 Generating 500 training samples...")
-    raw_patients = patient_gen.generate_batch_patients_data(5000)
+    raw_patients = patient_gen.generate_batch_patients_data(500)
 
     df = pd.DataFrame([p.__dict__ for p in raw_patients])
 
     # 2. TRAIN THE MODEL
-    X = df[['left_sensory_score', 'right_sensory_score', 'asymmetry_index']]
+    X = df[['left_sensory_score', 'right_sensory_score', 'systolic_bp', 'hba1c', 'asymmetry_index']]
     y = df['impact_tier']
 
     model = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42)
@@ -22,7 +22,7 @@ def run_comprehensive_test():
 
     # 3. THE TRIPLE TEST (PREDICTION)
     # Define feature names to avoid the UserWarning
-    cols = ['left_sensory_score', 'right_sensory_score', 'asymmetry_index']
+    cols = ['left_sensory_score', 'right_sensory_score', 'systolic_bp', 'hba1c', 'asymmetry_index']
 
 
 
@@ -46,23 +46,23 @@ def run_comprehensive_test():
     # Updated Test Suite for Impact Tiers (0-4)
     test_cases = [
         # TIER 1: Borderline Subtle (Just enough asymmetry to trigger)
-        ("Borderline Subtle", [8.5, 7.8, 0.08]),
+        ("Borderline Subtle", [8.5, 7.8, 80, 90, 0.08]),
 
         # TIER 2: Moderate Unilateral (Clear gap, but not a total loss)
-        ("Moderate Gap", [9.0, 5.5, 0.48]),
+        ("Moderate Gap", [9.0, 5.5, 80, 90, 0.48]),
 
         # TIER 3: Pronounced Unilateral (Near-complete loss on one side)
-        ("Pronounced Gap", [8.8, 1.2, 1.52]),
+        ("Pronounced Gap", [8.8, 1.2, 80, 90, 1.52]),
 
         # TIER 4: Moderate Bilateral (Symmetrical but both weak - not yet "Weak Global")
         # This checks if the AI keeps it as Tier 4 because the scores are low,
         # even if they aren't at the minimum (1.0).
-        ("Moderate Bilateral", [4.2, 4.4, 0.04]),
+        ("Moderate Bilateral", [4.2, 4.4, 80, 90, 0.04]),
 
         # TIER 0: Healthy but Low-End (Balanced but near the 7.0 cutoff)
-        ("Low-End Healthy", [7.1, 7.2, 0.01]),
+        ("Low-End Healthy", [7.1, 7.2, 80, 90, 0.01]),
 
-        ("my test case", [6.91, 6.98, 0.01])
+        ("my test case", [6.91, 6.98, 80, 90, 0.01])
     ]
 
     print("\n" + "="*65)
