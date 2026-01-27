@@ -297,7 +297,7 @@ def calculate_volatility_index(patient_id):
         return 0.0
 
     # Use the 'worst' side score for each reading to track neurological stability
-    scores = [min(float(r['left_sensory_score']), float(r['right_sensory_score'])) for r in readings]
+    scores = [min(float(r.left_sensory_score), float(r.right_sensory_score)) for r in readings]
 
     # Biological volatility calculation using NumPy
     return round(float(np.std(scores)), 3)
