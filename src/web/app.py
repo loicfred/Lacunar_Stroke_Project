@@ -82,17 +82,39 @@ def calculate_stuttering_volatility(patient_id, current_avg_score):
     Detects the 'stuttering pattern' characteristic of active lacunar strokes.
     """
     try:
-        history = dbmanager.getAllWhere('reading', 'patient_id = %s', patient_id)
-        if not history or len(history) < 2:
-            return 0.0
+        # Use the database function that already calculates volatility
+        volatility = dbmanager.calculate_volatility_index(patient_id)
 
-        # Take the last 4 readings from DB + the current score
-        history.sort(key=lambda x: x.timestamp, reverse=True)
-        recent_scores = [(float(r.left_sensory_score) + float(r.right_sensory_score))/2 for r in history[:4]]
-        recent_scores.append(current_avg_score)
+        # If no volatility from database, calculate it manually
+        if volatility == 0.0:
+            history = dbmanager.get_recent_readings(patient_id, limit=4)
+            if not history or len(history) < 2:
+                return 0.0
 
-        return float(np.std(recent_scores))
-    except Exception: return 0.0
+            # Take the last 4 readings from DB + the current score
+            recent_scores = []
+            for r in history[:4]:
+                # Handle both dictionary and object formats
+                if isinstance(r, dict):
+                    left = float(r.get('left_sensory_score', 0))
+                    right = float(r.get('right_sensory_score', 0))
+                else:
+                    # It's an object
+                    left = float(getattr(r, 'left_sensory_score', 0))
+                    right = float(getattr(r, 'right_sensory_score', 0))
+
+                recent_scores.append((left + right) / 2)
+
+            recent_scores.append(current_avg_score)
+            return float(np.std(recent_scores))
+
+        return volatility
+
+    except Exception as e:
+        print(f"Error calculating stuttering volatility: {e}")
+        import traceback
+        traceback.print_exc()
+        return 0.0
 
 
 # ========== MODEL PREDICTION FUNCTION ==========
@@ -119,26 +141,125 @@ def encode_bp_category(bp_category):
     }
     return encoding.get(bp_category, 0)
 
+def encode_bp_medication(bp_med_status):
+    """Encode BP medication status to numerical values"""
+    if isinstance(bp_med_status, str):
+        encoding = {
+            "No": 0,
+            "Yes": 1,
+            "Irregular": 2,
+            "0": 0,
+            "1": 1,
+            "2": 2
+        }
+        return encoding.get(bp_med_status, 0)
+    else:
+        # If it's already a number, ensure it's 0, 1, or 2
+        return int(bp_med_status) if bp_med_status in [0, 1, 2] else 0
+
+# Add this helper function to app.py (near other helper functions)
+def extract_pattern_features(reading_sequence):
+    """
+    Extract lacunar stroke pattern features from a sequence of readings.
+    Same function as in patient_generator.py, added here for prediction.
+    """
+    if len(reading_sequence) < 2:
+        return {}
+
+    try:
+        import numpy as np
+
+        # Extract sensory scores from sequence
+        left_scores = []
+        right_scores = []
+        for r in reading_sequence:
+            if hasattr(r, 'left_sensory_score'):
+                left_scores.append(float(r.left_sensory_score))
+                right_scores.append(float(r.right_sensory_score))
+            elif isinstance(r, dict):
+                left_scores.append(float(r.get('left_sensory_score', 9.0)))
+                right_scores.append(float(r.get('right_sensory_score', 9.0)))
+
+        # Use the worse side for pattern analysis
+        avg_scores = [(l + r) / 2 for l, r in zip(left_scores, right_scores)]
+
+        # Calculate features
+        volatility = float(np.std(avg_scores)) if len(avg_scores) > 1 else 0.0
+
+        if len(avg_scores) >= 2:
+            time_points = list(range(len(avg_scores)))
+            slope, _ = np.polyfit(time_points, avg_scores, 1)
+            velocity_trend = float(slope)
+        else:
+            velocity_trend = 0.0
+
+        # Stuttering Score
+        direction_changes = 0
+        if len(avg_scores) >= 3:
+            for i in range(1, len(avg_scores) - 1):
+                prev = avg_scores[i-1]
+                curr = avg_scores[i]
+                nxt = avg_scores[i+1]
+                if (curr > prev and curr > nxt) or (curr < prev and curr < nxt):
+                    direction_changes += 1
+
+        pattern_amplitude = max(avg_scores) - min(avg_scores) if avg_scores else 0.0
+
+        return {
+            'volatility_index': round(volatility, 3),
+            'velocity_trend': round(velocity_trend, 4),
+            'stuttering_score': direction_changes,
+            'pattern_amplitude': round(pattern_amplitude, 3),
+            'reading_count': len(reading_sequence)
+        }
+
+    except Exception as e:
+        print(f"⚠️ Error extracting pattern features: {e}")
+        return {}
+
 
 def predict_with_model(patient_data):
-    """
-    Unified Prediction Logic:
-    - No Cliff-Edge (uses probability-weighted labels)
-    - Side Detection
-    - Bilateral Consideration
-    """
     if model is None:
         return None
 
     try:
-        # 1. Prepare Features
-        left = float(patient_data.get("left_sensory_score"))
-        right = float(patient_data.get("right_sensory_score"))
+        # DEBUG: Print what we received
+        print(f"\n🎯 DEBUG predict_with_model received:")
+        for key, value in patient_data.items():
+            print(f"  {key}: {value}")
+
+        # 1. Prepare Basic Features - use values from patient_data
+        left = float(patient_data.get("left_sensory_score", 9.0))
+        right = float(patient_data.get("right_sensory_score", 9.0))
+
+        # Calculate avg early to avoid UnboundLocalError
         avg = (left + right) / 2
-        asymmetry_index = abs(left - right) / (avg + 1)  # +1 to avoid division by zero
+
+        # Use form values if provided, otherwise calculate
+        if "asymmetry_index" in patient_data:
+            asymmetry_index = float(patient_data.get("asymmetry_index", 0.0))
+        else:
+            asymmetry_index = abs(left - right) / (avg + 1)
+
+        # Use form values for pattern features
+        pattern_volatility = float(patient_data.get("pattern_volatility", 0.0))
+        pattern_velocity_trend = float(patient_data.get("pattern_velocity_trend", 0.0))
+        pattern_stuttering_score = int(patient_data.get("pattern_stuttering_score", 0))
+        pattern_amplitude = float(patient_data.get("pattern_amplitude", 0.0))
+        pattern_asymmetry_progression = float(patient_data.get("pattern_asymmetry_progression", 0.0))
+        pattern_type = int(patient_data.get("pattern_type", 0))
+        pattern_consistency = float(patient_data.get("pattern_consistency", 0.0))
+        pattern_reading_count = int(patient_data.get("pattern_reading_count", 5))
+
+        # Use form values for other features
+        score_velocity = float(patient_data.get("score_velocity", 0.0))
+        volatility_index = float(patient_data.get("volatility_index", 0.0))
+
+        # 2. Get Historical Data for Pattern Analysis
+        patient_id = patient_data.get("id", 0)
 
         # Fetch Velocity from Database
-        l_vel, r_vel, t_delta = dbmanager.get_reading_velocity(patient_data.get("id", 0))
+        l_vel, r_vel, t_delta = dbmanager.get_reading_velocity(patient_id)
 
         # Determine which velocity to use based on affected side
         affected_side = "None"
@@ -153,48 +274,201 @@ def predict_with_model(patient_data):
 
         score_velocity = round(score_velocity, 6)
 
-        volatility = calculate_stuttering_volatility(patient_data.get("id"), avg)
+        # 3. Get Recent Readings for Pattern Analysis
+        recent_readings = dbmanager.get_recent_readings(patient_id, limit=5)
 
-        # Get all required features from patient_data
+        # Calculate volatility from recent readings
+        volatility = calculate_stuttering_volatility(patient_id, avg)
+
+        # 4. Extract Pattern Features if we have enough historical data
+        pattern_features = {}
+        has_pattern_data = False
+
+        if len(recent_readings) >= 3:
+            try:
+                # Create a reading sequence including current reading
+                reading_sequence = []
+
+                # Add historical readings
+                for r in recent_readings:
+                    # Create a simple SensoryDetails-like object
+                    class ReadingWrapper:
+                        def __init__(self, reading_dict):
+                            self.left_sensory_score = float(reading_dict.get('left_sensory_score', 9.0))
+                            self.right_sensory_score = float(reading_dict.get('right_sensory_score', 9.0))
+                            self.asymmetry_index = reading_dict.get('asymmetry_index')
+                            if self.asymmetry_index is None:
+                                avg_score = (self.left_sensory_score + self.right_sensory_score) / 2
+                                self.asymmetry_index = abs(self.left_sensory_score - self.right_sensory_score) / (avg_score + 1)
+
+                    reading_sequence.append(ReadingWrapper(r))
+
+                # Add current reading
+                class CurrentReadingWrapper:
+                    def __init__(self, left, right):
+                        self.left_sensory_score = left
+                        self.right_sensory_score = right
+                        avg_score = (left + right) / 2
+                        self.asymmetry_index = abs(left - right) / (avg_score + 1)
+
+                reading_sequence.append(CurrentReadingWrapper(left, right))
+
+                # Extract pattern features using the same logic as in patient_generator
+                if len(reading_sequence) >= 3:
+                    # Extract scores
+                    left_scores = [r.left_sensory_score for r in reading_sequence]
+                    right_scores = [r.right_sensory_score for r in reading_sequence]
+                    avg_scores = [(l + r) / 2 for l, r in zip(left_scores, right_scores)]
+
+                    # Calculate pattern features
+                    pattern_volatility = float(np.std(avg_scores)) if len(avg_scores) > 1 else 0.0
+
+                    # Velocity trend
+                    if len(avg_scores) >= 2:
+                        time_points = list(range(len(avg_scores)))
+                        slope, _ = np.polyfit(time_points, avg_scores, 1)
+                        pattern_velocity_trend = float(slope)
+                    else:
+                        pattern_velocity_trend = 0.0
+
+                    # Stuttering score
+                    direction_changes = 0
+                    if len(avg_scores) >= 3:
+                        for i in range(1, len(avg_scores) - 1):
+                            prev = avg_scores[i-1]
+                            curr = avg_scores[i]
+                            nxt = avg_scores[i+1]
+                            if (curr > prev and curr > nxt) or (curr < prev and curr < nxt):
+                                direction_changes += 1
+
+                    # Pattern amplitude
+                    pattern_amplitude = max(avg_scores) - min(avg_scores) if avg_scores else 0.0
+
+                    # Asymmetry progression
+                    asymmetry_values = [r.asymmetry_index for r in reading_sequence]
+                    if len(asymmetry_values) >= 2:
+                        asym_slope, _ = np.polyfit(range(len(asymmetry_values)), asymmetry_values, 1)
+                        asymmetry_progression = float(asym_slope)
+                    else:
+                        asymmetry_progression = 0.0
+
+                    # Consistency score
+                    if len(left_scores) >= 2 and len(right_scores) >= 2:
+                        left_var = np.var(left_scores)
+                        right_var = np.var(right_scores)
+                        consistency = 1.0 - (abs(left_var - right_var) / max(left_var, right_var, 0.001))
+                    else:
+                        consistency = 1.0
+
+                    pattern_features = {
+                        'pattern_volatility_index': round(pattern_volatility, 3),
+                        'pattern_velocity_trend': round(pattern_velocity_trend, 4),
+                        'pattern_stuttering_score': direction_changes,
+                        'pattern_pattern_amplitude': round(pattern_amplitude, 3),
+                        'pattern_asymmetry_progression': round(asymmetry_progression, 4),
+                        'pattern_consistency_score': round(consistency, 3)
+                    }
+
+                    has_pattern_data = True
+                    print(f"🔍 Pattern features extracted: {pattern_features}")
+
+            except Exception as pattern_error:
+                print(f"⚠️ Error extracting pattern features: {pattern_error}")
+                has_pattern_data = False
+
+        # 5. Get all required features from patient_data
         sbp = float(patient_data.get("systolic_bp", 120))
-        dbp = float(patient_data.get("diastolic_bp", 80))  # NEW
+        dbp = float(patient_data.get("diastolic_bp", 80))
         hba1c = float(patient_data.get("hba1c", 5.4))
-        blood_glucose = float(patient_data.get("blood_glucose", 100))  # NEW
-        diabetes_type = patient_data.get("diabetes_type", "None")  # NEW
-        bp_category = patient_data.get("bp_category", "Normal")  # NEW
-        on_bp_medication = int(patient_data.get("on_bp_medication", 0))  # NEW
+        blood_glucose = float(patient_data.get("blood_glucose", 100))
+        diabetes_type = patient_data.get("diabetes_type", "None")
+        bp_category = patient_data.get("bp_category", "Normal")
         sm = int(patient_data.get("smoking_history", patient_data.get("smoking", 0)))
 
         # Encode categorical variables
-        diabetes_type_encoded = encode_diabetes_type(diabetes_type)  # You need to define this
-        bp_category_encoded = encode_bp_category(bp_category)  # You need to define this
+        diabetes_type_encoded = encode_diabetes_type(diabetes_type)
+        bp_category_encoded = encode_bp_category(bp_category)
+        on_bp_medication = encode_bp_medication(patient_data.get("on_bp_medication", 0))
+        # 6. Create input data with ALL expected features
+        input_dict = {
+            'left_sensory_score': left,
+            'right_sensory_score': right,
+            'asymmetry_index': asymmetry_index,
+            'systolic_bp': sbp,
+            'diastolic_bp': dbp,
+            'hba1c': hba1c,
+            'blood_glucose': blood_glucose,
+            'diabetes_type': diabetes_type_encoded,
+            'bp_category': bp_category_encoded,
+            'on_bp_medication': on_bp_medication,
+            'smoking_history': sm,
+            'score_velocity': score_velocity,
+            'volatility_index': volatility
+        }
 
-        # 2. Create input data with ALL expected features
-        input_data = pd.DataFrame([[
-            left, right, asymmetry_index, sbp, dbp, hba1c, blood_glucose,
-            diabetes_type_encoded, bp_category_encoded, on_bp_medication,
-            sm, score_velocity, volatility
-        ]], columns=[
-            'left_sensory_score', 'right_sensory_score', 'asymmetry_index',
-            'systolic_bp', 'diastolic_bp', 'hba1c', 'blood_glucose',
-            'diabetes_type', 'bp_category', 'on_bp_medication',
-            'smoking_history', 'score_velocity', 'volatility_index'
-        ])
+        # Add pattern features if available
+        if has_pattern_data:
+            for key, value in pattern_features.items():
+                input_dict[key] = value
 
-        # 3. Get Prediction and Probabilities
+        # 7. Check what features the model expects
+        model_features = []
+        if hasattr(model, 'feature_names_in_'):
+            model_features = list(model.feature_names_in_)
+            print(f"📋 Model expects {len(model_features)} features: {model_features[:5]}...")
+        else:
+            # Use all features we have
+            model_features = list(input_dict.keys())
+
+        # 8. Create input data with only the features the model expects
+        input_values = []
+        for feat in model_features:
+            if feat in input_dict:
+                input_values.append(input_dict[feat])
+            else:
+                # If model expects a feature we don't have, use 0
+                print(f"⚠️  Feature '{feat}' expected by model but not in input data, using 0")
+                input_values.append(0)
+
+        input_data = pd.DataFrame([input_values], columns=model_features)
+
+        # Debug: Show what we're sending to the model
+        print(f"🔍 Input data shape: {input_data.shape}")
+        print(f"🔍 Features sent: {list(input_data.columns)}")
+
+        # 9. Get Prediction and Probabilities
         prediction_code = int(model.predict(input_data)[0])
         probs = model.predict_proba(input_data)[0]
         confidence = max(probs)
 
-        # 4. Post-processing rules
-        # Override to bilateral if volatility high and velocity negative
+        print(f"🔍 Prediction: Tier {prediction_code}, Confidence: {confidence:.2%}")
+
+        # 10. Post-processing rules with pattern consideration
+        # Override to bilateral if pattern shows high stuttering AND negative velocity
+        if has_pattern_data:
+            pattern_stuttering = pattern_features.get('pattern_stuttering_score', 0)
+            pattern_volatility_val = pattern_features.get('pattern_volatility_index', 0)
+
+            # Lacunar stroke pattern: high stuttering + high volatility + negative trend
+            if pattern_stuttering >= 3 and pattern_volatility_val > 1.5 and score_velocity < -0.005:
+                prediction_code = max(prediction_code, 3)  # At least severe unilateral
+                print(f"🔍 Lacunar pattern detected: stuttering={pattern_stuttering}, volatility={pattern_volatility_val}")
+
+        # Additional override for high volatility and negative velocity
         if volatility > 1.2 and score_velocity < -0.8:
             prediction_code = 4
+            print(f"🔍 Override to bilateral due to high volatility ({volatility}) and negative velocity ({score_velocity})")
 
-        # 5. Determine Affected Side & Bilateral Risk
-        # Re-evaluate affected side after potential override
+        # 11. Determine Affected Side & Bilateral Risk with pattern consideration
         if prediction_code == 4 or (left < 6.0 and right < 6.0):
             affected_side = "Bilateral (Both Sides)"
+            # Check if it's truly bilateral or just severe unilateral
+            if has_pattern_data and pattern_features.get('pattern_asymmetry_progression', 0) > 0.01:
+                # Asymmetry is increasing - likely unilateral getting worse
+                if left < right - 1.0:
+                    affected_side = "Left (Severe)"
+                elif right < left - 1.0:
+                    affected_side = "Right (Severe)"
         elif left < right - 0.5:
             affected_side = "Left"
         elif right < left - 0.5:
@@ -202,7 +476,7 @@ def predict_with_model(patient_data):
         else:
             affected_side = "None"
 
-        # 6. Clinical Label Mapping
+        # 12. Clinical Label Mapping
         impact_labels = {
             0: {"label": "Strong Response", "level": "low", "emoji": "🟢"},
             1: {"label": "Slightly Reduced", "level": "medium", "emoji": "🟡"},
@@ -213,14 +487,48 @@ def predict_with_model(patient_data):
 
         res = impact_labels.get(prediction_code, impact_labels[0])
 
-        # 7. Cliff-Edge Smoothing
+        # 13. Cliff-Edge Smoothing with pattern confidence
         display_label = res["label"]
-        if confidence < 0.55:
+
+        # Adjust confidence based on pattern data availability
+        pattern_confidence_factor = 1.0
+        if has_pattern_data:
+            pattern_confidence_factor = 1.2  # More confident with pattern data
+            # Add pattern qualifier for lacunar strokes
+            if pattern_features.get('pattern_stuttering_score', 0) >= 3:
+                display_label = f"Lacunar Pattern: {display_label}"
+
+        adjusted_confidence = confidence * pattern_confidence_factor
+
+        if adjusted_confidence < 0.55:
             display_label = f"Borderline {display_label}"
+            print(f"🔍 Borderline flag added (confidence: {adjusted_confidence:.2%})")
 
         # Add confidence-based qualifier
-        if confidence < 0.4:
+        if adjusted_confidence < 0.4:
             display_label = f"Low Confidence: {display_label}"
+            print(f"🔍 Low confidence flag added (confidence: {adjusted_confidence:.2%})")
+
+        # 14. Pattern Analysis Summary
+        pattern_analysis = None
+        if has_pattern_data:
+            pattern_stuttering_level = "stable"
+            stuttering_score = pattern_features.get('pattern_stuttering_score', 0)
+            if stuttering_score >= 3:
+                pattern_stuttering_level = "HIGH stuttering (Lacunar pattern)"
+            elif stuttering_score >= 2:
+                pattern_stuttering_level = "moderate stuttering"
+            elif stuttering_score >= 1:
+                pattern_stuttering_level = "mild stuttering"
+
+            pattern_analysis = {
+                'stuttering_level': pattern_stuttering_level,
+                'stuttering_score': stuttering_score,
+                'volatility': pattern_features.get('pattern_volatility_index', 0),
+                'trend': pattern_features.get('pattern_velocity_trend', 0),
+                'amplitude': pattern_features.get('pattern_pattern_amplitude', 0),
+                'readings_used': len(recent_readings) + 1
+            }
 
         return {
             "prediction_code": prediction_code,
@@ -229,10 +537,14 @@ def predict_with_model(patient_data):
             "state_emoji": res["emoji"],
             "affected_side": affected_side,
             "model_confidence": round(confidence, 3),
+            "adjusted_confidence": round(adjusted_confidence, 3),
             "asymmetry_index": round(asymmetry_index, 3),
             "volatility": round(volatility, 3),
             "score_velocity": score_velocity,
-            "features_used": len(input_data.columns)
+            "has_pattern_data": has_pattern_data,
+            "pattern_analysis": pattern_analysis,
+            "features_used": len(model_features),
+            "pattern_features_count": len(pattern_features) if has_pattern_data else 0
         }
 
     except Exception as ex:
@@ -389,7 +701,6 @@ def predict_form():
 def api_predict_stroke():
     """
     Handles stroke prediction with comprehensive error handling.
-    Checks for session validity, input integrity, and processing errors.
     """
     try:
         # 1. Authentication Check
@@ -408,26 +719,40 @@ def api_predict_stroke():
             return render_template('error.html',
                                    error="Patient profile not found. Please complete your profile settings."), 404
 
-        # 3. Input Extraction and Validation - EXPANDED for new fields
+        # 3. Input Extraction and Validation - FIXED FIELD NAMES
         try:
-            left_score = float(request.form.get("left_asymmetry", 9.0))
-            right_score = float(request.form.get("right_asymmetry", 9.0))
+            # CRITICAL: Use correct field names from predict_form.html
+            left_score = float(request.form.get("left_sensory_score", 9.0))
+            right_score = float(request.form.get("right_sensory_score", 9.0))
+            asymmetry_index = float(request.form.get("asymmetry_index", 0.0))
+            score_velocity = float(request.form.get("score_velocity", 0.0))
+            volatility_index = float(request.form.get("volatility_index", 0.0))
+            pattern_volatility = float(request.form.get("pattern_volatility", 0.0))
+            pattern_velocity_trend = float(request.form.get("pattern_velocity_trend", 0.0))
+            pattern_stuttering_score = int(request.form.get("pattern_stuttering_score", 0))
+            pattern_amplitude = float(request.form.get("pattern_amplitude", 0.0))
+            pattern_asymmetry_progression = float(request.form.get("pattern_asymmetry_progression", 0.0))
+            pattern_type = int(request.form.get("pattern_type", 0))
+            pattern_consistency = float(request.form.get("pattern_consistency", 0.0))
+            pattern_reading_count = int(request.form.get("pattern_reading_count", 5))
 
             # Ensure scores are within clinical bounds (0.0 to 10.0)
             if not (0 <= left_score <= 10 and 0 <= right_score <= 10):
                 raise ValueError("Sensory scores must be between 0 and 10.")
 
-            # Get all required fields with fallbacks
+            # Get all required fields with fallbacks - FIXED FIELD NAMES
             sbp = float(request.form.get("systolic_bp") or getattr(patient_info, 'systolic_bp', 120))
             dbp = float(request.form.get("diastolic_bp") or getattr(patient_info, 'diastolic_bp', 80))
             hba1c = float(request.form.get("hba1c") or getattr(patient_info, 'hba1c', 5.4))
             blood_glucose = float(request.form.get("blood_glucose") or getattr(patient_info, 'blood_glucose', 100))
-            smoking = int(request.form.get("smoking") or getattr(patient_info, 'smoking_history', 0))
+
+            # CRITICAL: Get smoking from correct field name
+            smoking_history = int(request.form.get("smoking_history") or getattr(patient_info, 'smoking_history', 0))
 
             # Categorical fields
             diabetes_type = request.form.get("diabetes_type") or getattr(patient_info, 'diabetes_type', 'None')
             bp_category = request.form.get("bp_category") or getattr(patient_info, 'bp_category', 'Normal')
-            on_bp_medication = int(request.form.get("on_bp_medication") or getattr(patient_info, 'on_bp_medication', 0))
+            on_bp_medication = int(request.form.get("bp_medication") or getattr(patient_info, 'on_bp_medication', 0))
 
             # Validate ranges
             if not (60 <= dbp <= 130):
@@ -439,48 +764,19 @@ def api_predict_stroke():
             logging.error(f"Validation Error: {ve}")
             return render_template('error.html', error=f"Invalid input data: {str(ve)}"), 400
 
-        # 4. Object Creation and Processing - FIXED to match new PatientDetails
-        new_patient_details = PatientDetails(
-            patient_id=user_id,
-            age_group=request.form.get("age_group") or getattr(patient_info, 'age_group', '50-59'),
-            sex=request.form.get("sex") or getattr(patient_info, 'sex', 'Male'),
-            systolic_bp=sbp,
-            hba1c=hba1c,
-            smoking_history=smoking,
-            diastolic_bp=dbp,
-            blood_glucose=blood_glucose,
-            diabetes_type=diabetes_type,
-            bp_category=bp_category,
-            on_bp_medication=on_bp_medication
-        )
-
-        # Calculate temporal features
+        # 4. Calculate temporal features (optional, can use form values instead)
         l_vel, r_vel, t_delta = dbmanager.get_reading_velocity(user_id)
         current_velocity = min(l_vel, r_vel) if (l_vel is not None and r_vel is not None) else 0.0
 
         avg_score = (left_score + right_score) / 2
         volatility = calculate_stuttering_volatility(user_id, avg_score)
 
-        # Calculate asymmetry index
-        asymmetry_index = abs(left_score - right_score) / (avg_score + 1)
-
-        new_sensory = SensoryDetails(
-            left_sensory_score=left_score,
-            right_sensory_score=right_score,
-            systolic_bp=sbp,
-            hba1c=hba1c,
-            affected_side="Determined by Model",
-            asymmetry_label=1 if abs(left_score - right_score) > 2.0 else 0,
-            score_velocity=current_velocity,
-            volatility_index=volatility
-        )
-
-        # 5. Prediction Logic - Updated with all 13 features
+        # 5. Prediction Logic - UPDATED with all 21 features
         patient_dict = {
-            "id": user_id,
-            "patient_id": user_id,
+            "id": user_id,  # Add patient_id for historical data lookup
             "left_sensory_score": left_score,
             "right_sensory_score": right_score,
+            "asymmetry_index": asymmetry_index,
             "systolic_bp": sbp,
             "diastolic_bp": dbp,
             "hba1c": hba1c,
@@ -488,72 +784,192 @@ def api_predict_stroke():
             "diabetes_type": diabetes_type,
             "bp_category": bp_category,
             "on_bp_medication": on_bp_medication,
-            "smoking": smoking,
-            "smoking_history": smoking,
-            "score_velocity": current_velocity,
-            "volatility": volatility,
-            "asymmetry_index": asymmetry_index
+            "smoking_history": smoking_history,
+            "score_velocity": score_velocity,
+            "volatility_index": volatility_index,
+            # Pattern features
+            "pattern_volatility": pattern_volatility,
+            "pattern_velocity_trend": pattern_velocity_trend,
+            "pattern_stuttering_score": pattern_stuttering_score,
+            "pattern_amplitude": pattern_amplitude,
+            "pattern_asymmetry_progression": pattern_asymmetry_progression,
+            "pattern_type": pattern_type,
+            "pattern_consistency": pattern_consistency,
+            "pattern_reading_count": pattern_reading_count
         }
 
-        # Attempt ML Prediction, fallback to Threshold if model is missing or fails
+        # 6. Debug: Print what we received
+        print(f"\n📋 DEBUG - Form data received:")
+        for key, value in patient_dict.items():
+            print(f"  {key}: {value}")
+
+        # Attempt ML Prediction
         prediction = None
         if model:
             try:
                 prediction = predict_with_model(patient_dict)
+                print(f"✅ ML Prediction successful: {prediction}")
             except Exception as e:
                 logging.error(f"ML Prediction failed, falling back: {e}")
                 import traceback
                 traceback.print_exc()
 
         if not prediction:
+            print("⚠️ Using threshold fallback prediction")
             prediction = predict_stroke_threshold(patient_dict)
 
-        # 6. Database Persistence - UPDATED for new Reading class
+        # 7. Database Persistence - WITH ROBUST ERROR HANDLING
         try:
-            from model.db.Reading import Reading
-            reading = Reading(
-                patient_id=user_id,
-                timestamp=datetime.now(),
-                left_sensory_score=left_score,
-                right_sensory_score=right_score,
-                systolic_bp=sbp,
-                diastolic_bp=dbp,
-                hba1c=hba1c,
-                blood_glucose=blood_glucose,
-                diabetes_type=diabetes_type,
-                bp_category=bp_category,
-                on_bp_medication=on_bp_medication
-            )
+            # First, try to check what columns exist in the reading table
+            import mariadb
 
-            # Add calculated fields
-            reading.asymmetry_index = asymmetry_index
-            reading.score_velocity = current_velocity
-            reading.volatility_index = volatility
+            try:
+                conn = mariadb.connect(
+                    user="Lacunar",
+                    password="LacunarStroke1234",
+                    host="54.37.40.206",
+                    port=3306,
+                    database="lacunar_stroke"
+                )
+                cursor = conn.cursor()
 
-            # Add prediction results if available
-            if prediction:
-                reading.prediction_tier = prediction.get('prediction_code')
-                reading.risk_label = prediction.get('sensory_response')
-                reading.affected_side = prediction.get('affected_side')
-                reading.model_confidence = prediction.get('model_confidence')
+                # Check what columns exist in reading table
+                cursor.execute("SHOW COLUMNS FROM reading")
+                existing_columns = [col[0] for col in cursor.fetchall()]
+                conn.close()
 
-            dbmanager.insert('reading', reading)
+                print(f"📊 Existing columns in reading table: {len(existing_columns)}")
+
+                # Prepare data for insertion based on what columns exist
+                reading_data = {
+                    'patient_id': user_id,
+                    'timestamp': datetime.now(),
+                    'left_sensory_score': left_score,
+                    'right_sensory_score': right_score,
+                    'systolic_bp': sbp,
+                    'diastolic_bp': dbp,
+                    'hba1c': hba1c,
+                    'blood_glucose': blood_glucose,
+                    'diabetes_type': diabetes_type,
+                    'bp_category': bp_category,
+                    'on_bp_medication': on_bp_medication
+                }
+
+                # Add pattern features only if columns exist
+                pattern_fields = {
+                    'asymmetry_index': asymmetry_index,
+                    'score_velocity': score_velocity,
+                    'volatility_index': volatility_index,
+                    'pattern_volatility': pattern_volatility,
+                    'pattern_velocity_trend': pattern_velocity_trend,
+                    'pattern_stuttering_score': pattern_stuttering_score,
+                    'pattern_amplitude': pattern_amplitude,
+                    'pattern_asymmetry_progression': pattern_asymmetry_progression,
+                    'pattern_type': pattern_type,
+                    'pattern_consistency': pattern_consistency,
+                    'pattern_reading_count': pattern_reading_count
+                }
+
+                for field_name, field_value in pattern_fields.items():
+                    if field_name in existing_columns:
+                        reading_data[field_name] = field_value
+                    else:
+                        print(f"⚠️ Column '{field_name}' not in reading table, skipping")
+
+                # Add prediction results if columns exist
+                if prediction:
+                    prediction_fields = {
+                        'prediction_tier': prediction.get('prediction_code'),
+                        'risk_label': prediction.get('sensory_response'),
+                        'affected_side': prediction.get('affected_side'),
+                        'model_confidence': prediction.get('model_confidence')
+                    }
+
+                    for field_name, field_value in prediction_fields.items():
+                        if field_name in existing_columns:
+                            reading_data[field_name] = field_value
+
+                # Insert using dbmanager with filtered data
+                from model.db.Reading import Reading
+                reading = Reading(**reading_data)
+
+                try:
+                    dbmanager.insert('reading', reading)
+                    print(f"✅ Reading saved successfully with {len(reading_data)} fields")
+                except Exception as insert_error:
+                    print(f"⚠️ Could not save with dbmanager: {insert_error}")
+
+                    # Fallback: Try direct SQL with minimal fields
+                    try:
+                        conn = mariadb.connect(
+                            user="Lacunar",
+                            password="LacunarStroke1234",
+                            host="54.37.40.206",
+                            port=3306,
+                            database="lacunar_stroke"
+                        )
+                        cursor = conn.cursor()
+
+                        # Build minimal insert query
+                        minimal_fields = ['patient_id', 'left_sensory_score', 'right_sensory_score',
+                                          'systolic_bp', 'diastolic_bp']
+                        minimal_values = [user_id, left_score, right_score, sbp, dbp]
+
+                        # Add timestamp if column exists
+                        if 'timestamp' in existing_columns:
+                            minimal_fields.append('timestamp')
+                            minimal_values.append(datetime.now())
+
+                        query = f"""
+                            INSERT INTO reading ({', '.join(minimal_fields)})
+                            VALUES ({', '.join(['%s'] * len(minimal_values))})
+                        """
+
+                        cursor.execute(query, tuple(minimal_values))
+                        conn.commit()
+                        conn.close()
+                        print(f"✅ Reading saved with minimal fields: {minimal_fields}")
+
+                    except Exception as sql_error:
+                        print(f"❌ Could not save even minimal data: {sql_error}")
+                        # Don't crash the app over database issues
+
+            except Exception as db_check_error:
+                print(f"⚠️ Could not check database structure: {db_check_error}")
+                # Continue without saving to database
+
         except Exception as db_err:
             logging.error(f"Failed to save reading to database: {db_err}")
             import traceback
             traceback.print_exc()
             # We continue even if saving fails so the user gets their immediate result
 
+        # 8. Prepare result data for template
+        result_data = {
+            "prediction": prediction,
+            "timestamp": datetime.now(),
+            "patient_data": {
+                "scores": {"left": left_score, "right": right_score},
+                "bp": {"systolic": sbp, "diastolic": dbp},
+                "glucose": {"hba1c": hba1c, "blood_glucose": blood_glucose},
+                "conditions": {
+                    "diabetes_type": diabetes_type,
+                    "bp_category": bp_category,
+                    "on_bp_medication": on_bp_medication,
+                    "smoking_history": smoking_history
+                }
+            },
+            "pattern_features": {
+                "volatility": pattern_volatility,
+                "stuttering_score": pattern_stuttering_score,
+                "pattern_type": pattern_type,
+                "amplitude": pattern_amplitude
+            }
+        }
+
+        # 9. Render result template
         return render_template('result.html',
-                               data={"prediction": prediction,
-                                     "timestamp": datetime.now(),
-                                     "patient_data": {
-                                         "scores": {"left": left_score, "right": right_score},
-                                         "bp": {"systolic": sbp, "diastolic": dbp},
-                                         "glucose": {"hba1c": hba1c, "blood_glucose": blood_glucose},
-                                         "conditions": {"diabetes_type": diabetes_type,
-                                                        "bp_category": bp_category}
-                                     }},
+                               data=result_data,
                                model_loaded=(model is not None))
 
     except Exception as ex:

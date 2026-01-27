@@ -41,7 +41,13 @@
                     </div>
                     <div class="risk-badge {{ data.prediction.risk_level }}-risk">
                         <span class="dot"></span>
+                        {% if data.prediction.model_confidence %}
                         Confidence: {{ (data.prediction.model_confidence * 100)|round|int }}%
+                        {% elif data.prediction.confidence %}
+                        Confidence: {{ (data.prediction.confidence * 100)|round|int }}%
+                        {% else %}
+                        Confidence: Not available
+                        {% endif %}
                     </div>
                     <div class="risk-meta">Last updated: {{ data.timestamp }}</div>
                 </div>
@@ -59,7 +65,7 @@
                 <div class="item">
                     <div class="lead">🫲</div>
                     <div class="label">Left Sensory Score</div>
-                    <div class="tag blue">{{ data.sensory_scores.left }}</div>
+                    <div class="tag blue">{{ data.patient_data.scores.left|default('N/A') }}</div>
                 </div>
                 <div class="item">
                     <div class="lead">🫱</div>

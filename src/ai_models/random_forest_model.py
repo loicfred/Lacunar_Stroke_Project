@@ -51,7 +51,29 @@ def encode_categorical_features(df):
             lambda x: BP_CATEGORY_ENCODING.get(x, 0)
         )
 
+    # Encode on_bp_medication (NEW)
+    if 'on_bp_medication' in df_encoded.columns:
+        df_encoded['on_bp_medication'] = df_encoded['on_bp_medication'].apply(
+            lambda x: encode_bp_medication(x)
+        )
+
     return df_encoded
+
+def encode_bp_medication(bp_med_status):
+    """Encode BP medication status to numerical values"""
+    if isinstance(bp_med_status, str):
+        encoding = {
+            "No": 0,
+            "Yes": 1,
+            "Irregular": 2,
+            "0": 0,
+            "1": 1,
+            "2": 2
+        }
+        return encoding.get(bp_med_status, 0)
+    else:
+        # If it's already a number, ensure it's 0, 1, or 2
+        return int(bp_med_status) if bp_med_status in [0, 1, 2] else 0
 
 def train_production_model():
     if not os.path.exists(DATA_PATH):
@@ -66,23 +88,43 @@ def train_production_model():
         # Simulating volatility for training data consistency
         df['volatility_index'] = df.apply(lambda x: np.random.uniform(0.1, 2.5) if x['impact_tier'] > 0 else np.random.uniform(0, 0.3), axis=1)
 
+    # Check for pattern features in the dataset
+    pattern_columns = [col for col in df.columns if col.startswith('pattern_')]
+    print(f"🔍 Found {len(pattern_columns)} pattern features: {pattern_columns}")
+
     df = encode_categorical_features(df)
 
-    features = [
+    # Define base features
+    base_features = [
         'left_sensory_score',
         'right_sensory_score',
         'asymmetry_index',
         'systolic_bp',
-        'diastolic_bp',        # NEW
+        'diastolic_bp',
         'hba1c',
-        'blood_glucose',       # NEW
-        'diabetes_type',       # NEW (encode this)
-        'bp_category',         # NEW (encode this)
-        'on_bp_medication',    # NEW
+        'blood_glucose',
+        'diabetes_type',
+        'bp_category',
+        'on_bp_medication',
         'smoking_history',
         'score_velocity',
         'volatility_index'
     ]
+
+    # Add available pattern features
+    features = base_features.copy()
+    for pattern_col in pattern_columns:
+        if pattern_col in df.columns:
+            features.append(pattern_col)
+
+    print(f"\n📋 Training with {len(features)} features:")
+    for i, feat in enumerate(features, 1):
+        print(f"  {i:2d}. {feat}")
+
+    # Ensure all features are numeric
+    for feature in features:
+        if feature in df.columns:
+            df[feature] = pd.to_numeric(df[feature], errors='coerce')
 
     # Check data types
     print("\n📊 Feature Data Types:")
@@ -117,6 +159,18 @@ def train_production_model():
 
     for _, row in feature_importance.iterrows():
         print(f"  - {row['feature']}: {row['importance']:.3%}")
+
+
+    print("\n🎯 Pattern Feature Importance Analysis:")
+    pattern_importances = []
+    for i, (feature, importance) in enumerate(zip(features, model.feature_importances_)):
+        if feature.startswith('pattern_'):
+            pattern_importances.append((feature, importance))
+
+    # Sort pattern features by importance
+    for feature, importance in sorted(pattern_importances, key=lambda x: x[1], reverse=True):
+        print(f"  - {feature}: {importance:.3%}")
+
 
     joblib.dump(model, MODEL_SAVE_PATH)
     print(f"💾 Model saved successfully to: {MODEL_SAVE_PATH}")

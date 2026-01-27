@@ -98,12 +98,36 @@ def insert(table_name, entity):
     try:
         cursor = conn.cursor()
         attributes = {k: v for k, v in entity.__dict__.items() if v is not None}
-        columns = ", ".join(attributes.keys())
-        placeholders = ", ".join(["?" for _ in attributes])
+
+        # If trying to insert into a view, redirect to the actual table
+        if table_name.lower() == 'detailed_reading':
+            print(f"⚠️ Redirecting insert from view 'detailed_reading' to actual table 'reading'")
+            table_name = 'reading'
+
+        # Check what columns actually exist in the table
+        cursor.execute(f"SHOW COLUMNS FROM {table_name.lower()}")
+        existing_columns = [col[0] for col in cursor.fetchall()]
+
+        # Filter attributes to only include columns that exist
+        filtered_attributes = {k: v for k, v in attributes.items() if k in existing_columns}
+
+        if not filtered_attributes:
+            raise ValueError(f"No valid attributes to insert into {table_name}")
+
+        columns = ", ".join(filtered_attributes.keys())
+        placeholders = ", ".join(["?" for _ in filtered_attributes])
         query = f"INSERT INTO {table_name.lower()} ({columns}) VALUES ({placeholders})"
-        cursor.execute(query, tuple(attributes.values()))
+
+        print(f"📝 Inserting into {table_name}: {list(filtered_attributes.keys())}")
+        cursor.execute(query, tuple(filtered_attributes.values()))
         conn.commit()
+
         return cursor.lastrowid
+
+    except Exception as e:
+        print(f"❌ Error in insert: {e}")
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -279,6 +303,86 @@ def calculate_volatility_index(patient_id):
     return round(float(np.std(scores)), 3)
 
 
+def get_recent_readings(patient_id, limit=5):
+    """
+    Fetches the most recent readings for pattern analysis.
+    Works with both tables and views.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)  # Important: dictionary=True
+
+        # Try 'reading' table first (the actual table)
+        try:
+            # Get columns from reading table
+            cursor.execute("SHOW COLUMNS FROM reading")
+            reading_columns = [col[0] for col in cursor.fetchall()]
+
+            # Build query with available columns
+            base_columns = ['id', 'patient_id', 'timestamp',
+                            'left_sensory_score', 'right_sensory_score',
+                            'systolic_bp', 'diastolic_bp', 'hba1c', 'blood_glucose',
+                            'diabetes_type', 'bp_category', 'on_bp_medication']
+
+            # Add optional columns if they exist
+            optional_columns = ['asymmetry_index', 'score_velocity', 'volatility_index',
+                                'pattern_volatility', 'pattern_velocity_trend',
+                                'pattern_stuttering_score', 'pattern_amplitude',
+                                'pattern_asymmetry_progression', 'pattern_type',
+                                'pattern_consistency', 'pattern_reading_count',
+                                'prediction_tier', 'risk_label', 'affected_side', 'model_confidence']
+
+            select_columns = base_columns.copy()
+            for col in optional_columns:
+                if col in reading_columns:
+                    select_columns.append(col)
+
+            query = f"""
+                    SELECT {', '.join(select_columns)}
+                    FROM reading
+                    WHERE patient_id = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    """
+
+            cursor.execute(query, (patient_id, limit))
+            results = cursor.fetchall()
+
+            if results:
+                print(f"✅ Found {len(results)} readings from 'reading' table")
+                return results
+
+        except Exception as e:
+            print(f"⚠️ Could not fetch from reading table: {e}")
+
+        # Fallback to detailed_reading view
+        try:
+            print("⚠️ Falling back to detailed_reading view")
+            cursor.execute("""
+                           SELECT id, patient_id, timestamp,
+                                  left_sensory_score, right_sensory_score,
+                                  systolic_bp, diastolic_bp, hba1c, blood_glucose,
+                                  diabetes_type, bp_category, on_bp_medication
+                           FROM detailed_reading
+                           WHERE patient_id = ?
+                           ORDER BY timestamp DESC
+                               LIMIT ?
+                           """, (patient_id, limit))
+            results = cursor.fetchall()
+            print(f"✅ Found {len(results)} readings from 'detailed_reading' view")
+            return results
+
+        except Exception as e:
+            print(f"⚠️ Could not fetch from detailed_reading view: {e}")
+            return []
+
+    except Exception as e:
+        print(f"Error fetching recent readings: {e}")
+        return []
+    finally:
+        conn.close()
+
+
 def generate_sample_data():
     """
     Updated to use Gaussian distributions (Ref 1),
@@ -300,7 +404,11 @@ def generate_sample_data():
         # Generate patient conditions
         has_hypertension = random.random() < 0.3
         has_diabetes = random.random() < 0.2
-        on_bp_meds = has_hypertension and random.random() < 0.6
+        # BP medication with 3 options
+        if has_hypertension:
+            on_bp_meds = random.choices([1, 2, 0], weights=[0.6, 0.2, 0.2])[0]  # 1=Yes, 2=Irregular, 0=No
+        else:
+            on_bp_meds = random.choices([0, 2, 1], weights=[0.85, 0.1, 0.05])[0]
 
         # Determine diabetes type if diabetic
         diabetes_type = "None"

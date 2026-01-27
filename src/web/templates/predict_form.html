@@ -66,6 +66,7 @@
             background: linear-gradient(to right, #d32f2f, #f57c00, #ffb300, #8bc34a, #388e3c);
             border-radius: 5px;
             outline: none;
+            cursor: pointer;
         }
 
         .slider::-webkit-slider-thumb {
@@ -271,6 +272,40 @@
             border-color: #999;
         }
 
+        /* Pattern features preview */
+        .pattern-preview {
+            background: #e8f4f8;
+            border: 1px solid #b3e0f2;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .pattern-preview h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #0c5460;
+        }
+
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .pattern-item {
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .hidden-fields {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .slider-group {
                 grid-template-columns: 1fr;
@@ -309,9 +344,27 @@
     </div>
 
     <form action="/api/predict" method="POST" id="predictionForm">
-        <!-- Hidden inputs for sensory scores (will be updated by sliders) -->
-        <input type="hidden" id="left_asymmetry" name="left_asymmetry" value="5.0">
-        <input type="hidden" id="right_asymmetry" name="right_asymmetry" value="5.0">
+        <!-- Hidden inputs for all required features -->
+        <div class="hidden-fields">
+            <!-- Sensory scores -->
+            <input type="hidden" id="left_sensory_score" name="left_sensory_score" value="5.0">
+            <input type="hidden" id="right_sensory_score" name="right_sensory_score" value="5.0">
+            <input type="hidden" id="asymmetry_index" name="asymmetry_index" value="0.0">
+
+            <!-- Temporal features -->
+            <input type="hidden" id="score_velocity" name="score_velocity" value="0.0">
+            <input type="hidden" id="volatility_index" name="volatility_index" value="0.0">
+
+            <!-- Pattern features -->
+            <input type="hidden" id="pattern_volatility" name="pattern_volatility" value="0.0">
+            <input type="hidden" id="pattern_velocity_trend" name="pattern_velocity_trend" value="0.0">
+            <input type="hidden" id="pattern_stuttering_score" name="pattern_stuttering_score" value="0">
+            <input type="hidden" id="pattern_amplitude" name="pattern_amplitude" value="0.0">
+            <input type="hidden" id="pattern_asymmetry_progression" name="pattern_asymmetry_progression" value="0.0">
+            <input type="hidden" id="pattern_type" name="pattern_type" value="0">
+            <input type="hidden" id="pattern_consistency" name="pattern_consistency" value="0.0">
+            <input type="hidden" id="pattern_reading_count" name="pattern_reading_count" value="5">
+        </div>
 
         <!-- Sensory Scores Section with Sliders -->
         <div class="slider-container">
@@ -334,8 +387,7 @@
                            step="0.1"
                            value="5.0"
                            class="slider"
-                           id="left-slider"
-                           oninput="updateLeftValue(this.value)">
+                           id="left-slider">
 
                     <div class="slider-marks">
                         <span>0 (No Response)</span>
@@ -359,8 +411,7 @@
                            step="0.1"
                            value="5.0"
                            class="slider"
-                           id="right-slider"
-                           oninput="updateRightValue(this.value)">
+                           id="right-slider">
 
                     <div class="slider-marks">
                         <span>0 (No Response)</span>
@@ -372,10 +423,21 @@
 
             <!-- Asymmetry Display -->
             <div style="text-align: center; margin-top: 20px; padding: 15px; background: white; border-radius: 8px;">
-                <strong>Current Asymmetry:</strong>
+                <strong>Current Asymmetry Index:</strong>
                 <span id="asymmetry-value" style="color: #14005c; font-weight: bold; margin-left: 10px;">0.0</span>
                 <div style="font-size: 12px; color: #666; margin-top: 5px;">
                     (Difference between left and right scores)
+                </div>
+            </div>
+
+            <!-- Pattern Features Preview -->
+            <div class="pattern-preview" id="pattern-preview">
+                <h4>📈 Generated Pattern Features</h4>
+                <div class="pattern-grid">
+                    <div class="pattern-item"><strong>Volatility:</strong> <span id="preview-volatility">0.0</span></div>
+                    <div class="pattern-item"><strong>Stuttering Score:</strong> <span id="preview-stuttering">0</span></div>
+                    <div class="pattern-item"><strong>Pattern Type:</strong> <span id="preview-pattern-type">stable</span></div>
+                    <div class="pattern-item"><strong>Amplitude:</strong> <span id="preview-amplitude">0.0</span></div>
                 </div>
             </div>
         </div>
@@ -437,6 +499,7 @@
                     <label for="smoking">✅ Smoking History</label>
                 </div>
             </div>
+
             <!-- Diabetes and Blood Pressure Input Fields -->
             <div style="margin-top: 25px; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e0e0e0;">
                 <h4 style="margin-top: 0; color: #14005c; margin-bottom: 20px;">📊 Diabetes & Blood Pressure Details</h4>
@@ -445,7 +508,7 @@
                     <!-- Diabetes Details -->
                     <div>
                         <h5 style="color: #d32f2f; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-vial" style="font-size: 16px;"></i> Diabetes Information
+                            Diabetes Information
                         </h5>
 
                         <div style="margin-bottom: 15px;">
@@ -454,12 +517,11 @@
                             </label>
                             <select id="diabetes_type" name="diabetes_type" class="form-select"
                                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                                <option value="">Select Type</option>
-                                <option value="none">No Diabetes</option>
-                                <option value="type1">Type 1 Diabetes</option>
-                                <option value="type2">Type 2 Diabetes</option>
-                                <option value="gestational">Gestational Diabetes</option>
-                                <option value="prediabetes">Pre-diabetes</option>
+                                <option value="0">No Diabetes</option>
+                                <option value="1">Type 1 Diabetes</option>
+                                <option value="2">Type 2 Diabetes</option>
+                                <option value="3">Gestational Diabetes</option>
+                                <option value="4">Pre-diabetes</option>
                             </select>
                         </div>
 
@@ -470,6 +532,7 @@
                             <input type="number" id="blood_glucose" name="blood_glucose"
                                    min="50" max="500" step="1"
                                    placeholder="e.g., 120"
+                                   value="120"
                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                         </div>
 
@@ -480,6 +543,7 @@
                             <input type="number" id="hba1c" name="hba1c"
                                    min="4.0" max="15.0" step="0.1"
                                    placeholder="e.g., 6.5"
+                                   value="5.5"
                                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                         </div>
                     </div>
@@ -487,7 +551,7 @@
                     <!-- Blood Pressure Details -->
                     <div>
                         <h5 style="color: #1976d2; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-heartbeat" style="font-size: 16px;"></i> Blood Pressure Information
+                            Blood Pressure Information
                         </h5>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
@@ -498,6 +562,7 @@
                                 <input type="number" id="systolic_bp" name="systolic_bp"
                                        min="80" max="250" step="1"
                                        placeholder="e.g., 120"
+                                       value="120"
                                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                             </div>
 
@@ -508,6 +573,7 @@
                                 <input type="number" id="diastolic_bp" name="diastolic_bp"
                                        min="50" max="150" step="1"
                                        placeholder="e.g., 80"
+                                       value="80"
                                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                             </div>
                         </div>
@@ -518,12 +584,11 @@
                             </label>
                             <select id="bp_category" name="bp_category" class="form-select"
                                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                                <option value="">Select Category</option>
-                                <option value="normal">Normal (<120/80)</option>
-                                <option value="elevated">Elevated (120-129/<80)</option>
-                                <option value="stage1">Stage 1 Hypertension (130-139/80-89)</option>
-                                <option value="stage2">Stage 2 Hypertension (≥140/≥90)</option>
-                                <option value="crisis">Hypertensive Crisis (>180/>120)</option>
+                                <option value="0">Normal (<120/80)</option>
+                                <option value="1">Elevated (120-129/<80)</option>
+                                <option value="2">Stage 1 Hypertension (130-139/80-89)</option>
+                                <option value="3">Stage 2 Hypertension (≥140/≥90)</option>
+                                <option value="4">Hypertensive Crisis (>180/>120)</option>
                             </select>
                         </div>
 
@@ -533,10 +598,9 @@
                             </label>
                             <select id="bp_medication" name="bp_medication" class="form-select"
                                     style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                                <option value="">Select</option>
                                 <option value="0">No</option>
                                 <option value="1">Yes</option>
-                                <option value="irregular">Irregular/As needed</option>
+                                <option value="2">Irregular/As needed</option>
                             </select>
                         </div>
                     </div>
@@ -578,34 +642,19 @@
             <p>Click a preset to load common clinical scenarios:</p>
 
             <div class="preset-buttons">
-                <button type="button" class="preset-btn"
-                        data-left="8.5" data-right="8.3"
-                        data-ht="0" data-db="0" data-sm="0"
-                        data-age="50-59" data-sex="Male">
+                <button type="button" class="preset-btn" data-preset="normal">
                     Normal Bilateral
                 </button>
-                <button type="button" class="preset-btn"
-                        data-left="4.2" data-right="8.7"
-                        data-ht="1" data-db="0" data-sm="1"
-                        data-age="65" data-sex="Male">
+                <button type="button" class="preset-btn" data-preset="left_unilateral">
                     Left Unilateral + HT+Smoking
                 </button>
-                <button type="button" class="preset-btn"
-                        data-left="8.9" data-right="3.8"
-                        data-ht="1" data-db="1" data-sm="0"
-                        data-age="72" data-sex="Female">
+                <button type="button" class="preset-btn" data-preset="right_unilateral">
                     Right Unilateral + HT+DM
                 </button>
-                <button type="button" class="preset-btn"
-                        data-left="3.5" data-right="3.8"
-                        data-ht="1" data-db="1" data-sm="1"
-                        data-age="68" data-sex="Male">
+                <button type="button" class="preset-btn" data-preset="bilateral_risk">
                     Bilateral + All Risk Factors
                 </button>
-                <button type="button" class="preset-btn"
-                        data-left="6.2" data-right="8.0"
-                        data-ht="0" data-db="0" data-sm="0"
-                        data-age="55" data-sex="Female">
+                <button type="button" class="preset-btn" data-preset="borderline">
                     Borderline Asymmetry
                 </button>
             </div>
@@ -627,7 +676,7 @@
 
         <!-- Submit Button -->
         <div class="form-actions">
-            <button type="submit" class="submit-btn">
+            <button type="submit" class="submit-btn" id="submit-btn">
                 🧠 Run Prediction Analysis
             </button>
             <a href="/dashboard/patient" class="cancel-btn">
@@ -638,99 +687,315 @@
 </div>
 
 <script>
-    // Update left slider value display
-    function updateLeftValue(value) {
-        document.getElementById('left-value').textContent = value;
-        document.getElementById('left_asymmetry').value = value;
-        updateAsymmetry();
+    // Preset configurations
+    const presets = {
+        normal: {
+            left: 9.2,
+            right: 9.0,
+            hypertension: false,
+            diabetes: false,
+            smoking: false,
+            age: "50-59",
+            sex: "Male",
+            systolic_bp: 118,
+            diastolic_bp: 78,
+            hba1c: 5.3,
+            blood_glucose: 95,
+            diabetes_type: "0",
+            bp_category: "0",
+            bp_medication: "0"
+        },
+        left_unilateral: {
+            left: 4.2,
+            right: 8.7,
+            hypertension: true,
+            diabetes: false,
+            smoking: true,
+            age: "65",
+            sex: "Male",
+            systolic_bp: 148,
+            diastolic_bp: 92,
+            hba1c: 5.8,
+            blood_glucose: 110,
+            diabetes_type: "0",
+            bp_category: "2",
+            bp_medication: "1"
+        },
+        right_unilateral: {
+            left: 8.9,
+            right: 3.8,
+            hypertension: true,
+            diabetes: true,
+            smoking: false,
+            age: "72",
+            sex: "Female",
+            systolic_bp: 155,
+            diastolic_bp: 88,
+            hba1c: 7.2,
+            blood_glucose: 165,
+            diabetes_type: "2",
+            bp_category: "3",
+            bp_medication: "1"
+        },
+        bilateral_risk: {
+            left: 3.5,
+            right: 3.8,
+            hypertension: true,
+            diabetes: true,
+            smoking: true,
+            age: "68",
+            sex: "Male",
+            systolic_bp: 165,
+            diastolic_bp: 98,
+            hba1c: 8.5,
+            blood_glucose: 210,
+            diabetes_type: "2",
+            bp_category: "3",
+            bp_medication: "1"
+        },
+        borderline: {
+            left: 6.2,
+            right: 8.0,
+            hypertension: false,
+            diabetes: false,
+            smoking: false,
+            age: "55",
+            sex: "Female",
+            systolic_bp: 125,
+            diastolic_bp: 82,
+            hba1c: 5.5,
+            blood_glucose: 102,
+            diabetes_type: "0",
+            bp_category: "1",
+            bp_medication: "0"
+        }
+    };
+
+    // Function to generate pattern features based on sensory scores and risk factors
+    function generatePatternFeatures(leftScore, rightScore) {
+        const asymmetry = Math.abs(leftScore - rightScore);
+        const avgScore = (leftScore + rightScore) / 2;
+
+        // Get health risk factors from checkboxes
+        const hasHypertension = document.getElementById('hypertension')?.checked || false;
+        const hasDiabetes = document.getElementById('diabetes')?.checked || false;
+        const hasSmoking = document.getElementById('smoking')?.checked || false;
+
+        // Calculate base impact tier
+        let impactScore = 0;
+
+        // Base score based on asymmetry
+        if (asymmetry < 0.5) {
+            impactScore += 0; // Minimal asymmetry
+        } else if (asymmetry < 1.5) {
+            impactScore += 1; // Mild asymmetry
+        } else if (asymmetry < 3.0) {
+            impactScore += 2; // Moderate asymmetry (potential lacunar)
+        } else if (asymmetry >= 3.0) {
+            impactScore += 3; // Severe asymmetry
+        }
+
+        // Adjust for low scores (bilateral involvement)
+        if (avgScore < 6.0) {
+            impactScore += 1;
+        }
+
+        // Add risk factors
+        if (hasHypertension) impactScore += 0.7;
+        if (hasDiabetes) impactScore += 1.0;
+        if (hasSmoking) impactScore += 0.5;
+
+        // Clamp impact score and determine tier
+        const clampedImpact = Math.min(Math.max(impactScore, 0), 4);
+        const impactTier = Math.round(clampedImpact);
+
+        // Generate pattern features based on impact tier
+        let patternFeatures;
+
+        switch(impactTier) {
+            case 0: // Normal
+                patternFeatures = {
+                    pattern_volatility: (Math.random() * 0.3 + 0.1).toFixed(3),
+                    pattern_stuttering_score: Math.floor(Math.random() * 2),
+                    pattern_amplitude: (Math.random() * 0.6 + 0.1).toFixed(3),
+                    pattern_consistency: (Math.random() * 0.2 + 0.8).toFixed(3),
+                    pattern_type: "stable"
+                };
+                break;
+            case 1: // Mild
+                patternFeatures = {
+                    pattern_volatility: (Math.random() * 0.5 + 0.5).toFixed(3),
+                    pattern_stuttering_score: Math.floor(Math.random() * 2) + 1,
+                    pattern_amplitude: (Math.random() * 0.7 + 0.5).toFixed(3),
+                    pattern_consistency: (Math.random() * 0.3 + 0.6).toFixed(3),
+                    pattern_type: Math.random() > 0.5 ? "mild_stuttering" : "stable"
+                };
+                break;
+            case 2: // Moderate (lacunar)
+                patternFeatures = {
+                    pattern_volatility: (Math.random() * 0.8 + 1.2).toFixed(3),
+                    pattern_stuttering_score: Math.floor(Math.random() * 2) + 2,
+                    pattern_amplitude: (Math.random() * 1.0 + 1.0).toFixed(3),
+                    pattern_consistency: (Math.random() * 0.3 + 0.4).toFixed(3),
+                    pattern_type: Math.random() > 0.3 ? "moderate_stuttering" : "high_stuttering"
+                };
+                break;
+            case 3: // Severe
+                patternFeatures = {
+                    pattern_volatility: (Math.random() * 1.0 + 1.8).toFixed(3),
+                    pattern_stuttering_score: Math.floor(Math.random() * 2) + 3,
+                    pattern_amplitude: (Math.random() * 1.2 + 1.5).toFixed(3),
+                    pattern_consistency: (Math.random() * 0.3 + 0.3).toFixed(3),
+                    pattern_type: "high_stuttering"
+                };
+                break;
+            case 4: // Bilateral
+                patternFeatures = {
+                    pattern_volatility: (Math.random() * 0.8 + 0.5).toFixed(3),
+                    pattern_stuttering_score: Math.floor(Math.random() * 2) + 1,
+                    pattern_amplitude: (Math.random() * 1.0 + 0.5).toFixed(3),
+                    pattern_consistency: (Math.random() * 0.2 + 0.7).toFixed(3),
+                    pattern_type: Math.random() > 0.5 ? "stable" : "mild_stuttering"
+                };
+                break;
+            default:
+                patternFeatures = {
+                    pattern_volatility: "0.0",
+                    pattern_stuttering_score: 0,
+                    pattern_amplitude: "0.0",
+                    pattern_consistency: "1.0",
+                    pattern_type: "stable"
+                };
+        }
+
+        // Add other calculated features
+        return {
+            ...patternFeatures,
+            pattern_velocity_trend: (-0.001 * impactTier + (Math.random() * 0.002 - 0.001)).toFixed(6),
+            pattern_asymmetry_progression: (impactTier > 0 ? 0.01 : 0) * Math.random().toFixed(6),
+            pattern_reading_count: 5,
+            score_velocity: (-0.001 * impactTier + (Math.random() * 0.002 - 0.001)).toFixed(6),
+            volatility_index: patternFeatures.pattern_volatility
+        };
     }
 
-    // Update right slider value display
-    function updateRightValue(value) {
-        document.getElementById('right-value').textContent = value;
-        document.getElementById('right_asymmetry').value = value;
-        updateAsymmetry();
-    }
+    // Update all sensory-related values
+    function updateSensoryScores() {
+        const leftScore = parseFloat(document.getElementById('left-slider').value);
+        const rightScore = parseFloat(document.getElementById('right-slider').value);
 
-    // Calculate and display asymmetry
-    function updateAsymmetry() {
-        const left = parseFloat(document.getElementById('left_asymmetry').value);
-        const right = parseFloat(document.getElementById('right_asymmetry').value);
-        const asymmetry = Math.abs(left - right).toFixed(1);
-        document.getElementById('asymmetry-value').textContent = asymmetry;
+        // Update display
+        document.getElementById('left-value').textContent = leftScore.toFixed(1);
+        document.getElementById('right-value').textContent = rightScore.toFixed(1);
 
-        // Color code based on asymmetry level
-        const elem = document.getElementById('asymmetry-value');
-        if (asymmetry > 4) {
-            elem.style.color = '#d32f2f'; // Red
-        } else if (asymmetry > 2) {
-            elem.style.color = '#f57c00'; // Orange
-        } else if (asymmetry > 1) {
-            elem.style.color = '#ffb300'; // Yellow
-        } else {
-            elem.style.color = '#388e3c'; // Green
+        // Update hidden fields
+        document.getElementById('left_sensory_score').value = leftScore;
+        document.getElementById('right_sensory_score').value = rightScore;
+
+        // Calculate and update asymmetry
+        const avgScore = (leftScore + rightScore) / 2;
+        const asymmetry = avgScore > 0 ? Math.abs(leftScore - rightScore) / avgScore : 0;
+        document.getElementById('asymmetry_index').value = asymmetry.toFixed(3);
+
+        // Show asymmetry value
+        const asymmetryDisplay = document.getElementById('asymmetry-value');
+        if (asymmetryDisplay) {
+            asymmetryDisplay.textContent = asymmetry.toFixed(3);
+
+            // Color code based on asymmetry level
+            if (asymmetry > 0.4) {
+                asymmetryDisplay.style.color = '#d32f2f'; // Red
+            } else if (asymmetry > 0.2) {
+                asymmetryDisplay.style.color = '#f57c00'; // Orange
+            } else if (asymmetry > 0.1) {
+                asymmetryDisplay.style.color = '#ffb300'; // Yellow
+            } else {
+                asymmetryDisplay.style.color = '#388e3c'; // Green
+            }
+        }
+
+        // Generate and preview pattern features
+        const patternFeatures = generatePatternFeatures(leftScore, rightScore);
+
+        // Update hidden fields with pattern features
+        document.getElementById('pattern_volatility').value = patternFeatures.pattern_volatility;
+        document.getElementById('pattern_velocity_trend').value = patternFeatures.pattern_velocity_trend;
+        document.getElementById('pattern_stuttering_score').value = patternFeatures.pattern_stuttering_score;
+        document.getElementById('pattern_amplitude').value = patternFeatures.pattern_amplitude;
+        document.getElementById('pattern_asymmetry_progression').value = patternFeatures.pattern_asymmetry_progression;
+        document.getElementById('pattern_consistency').value = patternFeatures.pattern_consistency;
+        document.getElementById('pattern_reading_count').value = patternFeatures.pattern_reading_count;
+        document.getElementById('score_velocity').value = patternFeatures.score_velocity;
+        document.getElementById('volatility_index').value = patternFeatures.volatility_index;
+
+        // Encode pattern_type to numeric
+        const patternTypeMap = {
+            'stable': 0,
+            'mild_stuttering': 1,
+            'moderate_stuttering': 2,
+            'high_stuttering': 3
+        };
+        document.getElementById('pattern_type').value = patternTypeMap[patternFeatures.pattern_type] || 0;
+
+        // Update preview
+        const previewElement = document.getElementById('pattern-preview');
+        if (previewElement) {
+            document.getElementById('preview-volatility').textContent = patternFeatures.pattern_volatility;
+            document.getElementById('preview-stuttering').textContent = patternFeatures.pattern_stuttering_score;
+            document.getElementById('preview-pattern-type').textContent = patternFeatures.pattern_type;
+            document.getElementById('preview-amplitude').textContent = patternFeatures.pattern_amplitude;
+            previewElement.style.display = 'block';
         }
     }
 
-    // Initialize asymmetry display
-    updateAsymmetry();
+    // Load preset configuration
+    function loadPreset(presetName) {
+        const preset = presets[presetName];
+        if (!preset) return;
 
-    // Preset buttons functionality
-    document.querySelectorAll('.preset-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            // Set sliders
-            document.getElementById('left-slider').value = this.dataset.left;
-            document.getElementById('right-slider').value = this.dataset.right;
+        // Set sliders
+        document.getElementById('left-slider').value = preset.left;
+        document.getElementById('right-slider').value = preset.right;
 
-            // Update displays
-            updateLeftValue(this.dataset.left);
-            updateRightValue(this.dataset.right);
+        // Update displays
+        updateSensoryScores();
 
-            // Set checkboxes
-            document.getElementById('hypertension').checked = this.dataset.ht === '1';
-            document.getElementById('diabetes').checked = this.dataset.db === '1';
-            document.getElementById('smoking').checked = this.dataset.sm === '1';
+        // Set checkboxes
+        document.getElementById('hypertension').checked = preset.hypertension;
+        document.getElementById('diabetes').checked = preset.diabetes;
+        document.getElementById('smoking').checked = preset.smoking;
 
-            // Set demographics
-            document.getElementById('age_group').value = this.dataset.age;
-            document.getElementById('sex').value = this.dataset.sex;
+        // Set other form fields
+        document.getElementById('age_group').value = preset.age;
+        document.getElementById('sex').value = preset.sex;
+        document.getElementById('systolic_bp').value = preset.systolic_bp;
+        document.getElementById('diastolic_bp').value = preset.diastolic_bp;
+        document.getElementById('hba1c').value = preset.hba1c;
+        document.getElementById('blood_glucose').value = preset.blood_glucose;
+        document.getElementById('diabetes_type').value = preset.diabetes_type;
+        document.getElementById('bp_category').value = preset.bp_category;
+        document.getElementById('bp_medication').value = preset.bp_medication;
 
-            // Show confirmation
-            showPresetInfo(this);
-        });
-    });
+        // Show notification
+        showNotification(`Preset "${presetName.replace('_', ' ')}" loaded`);
+    }
 
-    // Show preset information
-    function showPresetInfo(button) {
-        const presetInfo = {
-            'Normal Bilateral': 'Both sides show normal responses with no risk factors.',
-            'Left Unilateral + HT+Smoking': 'Left side deficit with hypertension and smoking history.',
-            'Right Unilateral + HT+DM': 'Right side deficit with hypertension and diabetes.',
-            'Bilateral + All Risk Factors': 'Both sides reduced with all major risk factors.',
-            'Borderline Asymmetry': 'Slight asymmetry, borderline case for monitoring.'
-        };
-
-        const presetName = button.textContent.trim();
-        const info = presetInfo[presetName] || 'Test case loaded.';
-
-        // Create a temporary notification
+    // Show notification
+    function showNotification(message) {
         const notification = document.createElement('div');
         notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #4caf50;
-                color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                z-index: 1000;
-                animation: slideIn 0.3s ease;
-            `;
-        notification.innerHTML = `
-                <strong>${presetName}</strong><br>
-                <small>${info}</small>
-            `;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4caf50;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+    `;
+        notification.innerHTML = `<strong>✓</strong> ${message}`;
 
         document.body.appendChild(notification);
 
@@ -739,45 +1004,66 @@
             notification.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
+    }
+
+    // Initialize everything when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Setup slider event listeners
+        const leftSlider = document.getElementById('left-slider');
+        const rightSlider = document.getElementById('right-slider');
+
+        if (leftSlider) {
+            leftSlider.addEventListener('input', updateSensoryScores);
+        }
+
+        if (rightSlider) {
+            rightSlider.addEventListener('input', updateSensoryScores);
+        }
+
+        // Setup preset buttons
+        document.querySelectorAll('.preset-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const presetName = this.dataset.preset;
+                if (presetName) {
+                    loadPreset(presetName);
+                }
+            });
+        });
+
+        // Setup form submission
+        const form = document.getElementById('predictionForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // Update all values one last time before submission
+                updateSensoryScores();
+
+                // Show loading state
+                const submitBtn = document.getElementById('submit-btn');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '⏳ Analyzing... Please wait';
+                    submitBtn.disabled = true;
+                }
+
+                // The form will submit normally
+            });
+        }
 
         // Add CSS animations
         const style = document.createElement('style');
         style.textContent = `
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes slideOut {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-            `;
-        document.head.appendChild(style);
-    }
-
-    // Form validation
-    document.getElementById('predictionForm').addEventListener('submit', function(e) {
-        const left = parseFloat(document.getElementById('left_asymmetry').value);
-        const right = parseFloat(document.getElementById('right_asymmetry').value);
-
-        // Basic validation
-        if (isNaN(left) || isNaN(right)) {
-            e.preventDefault();
-            alert('Please enter valid sensory scores');
-            return false;
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+        document.head.appendChild(style);
 
-        // Show loading state
-        const submitBtn = document.querySelector('.submit-btn');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '⏳ Analyzing... Please wait';
-        submitBtn.disabled = true;
-
-        // Re-enable after 5 seconds if something goes wrong
-        setTimeout(() => {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }, 5000);
+        // Initialize with current values
+        updateSensoryScores();
     });
 </script>
 </body>
