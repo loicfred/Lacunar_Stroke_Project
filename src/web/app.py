@@ -23,7 +23,6 @@ import numpy as np
 
 
 from model.sample.Patient import Patient
-from model.sample.SensoryDetails import SensoryDetails
 
 current_dir = os.path.dirname(os.path.abspath(__file__))  # src/web/
 parent_dir = os.path.dirname(current_dir)  # src/
@@ -673,11 +672,10 @@ def predict_form():
     if 'user_id' not in session:
         return redirect('/login')
 
-    # Check if user is a patient (user in database = patient in your system)
-    role = session.get('role', '').lower()
+    role = session['role']
 
-    if role != 'user':  # Changed from 'PATIENT' to 'user'
-        if role == 'doctor':
+    if role != 'PATIENT':
+        if role == 'DOCTOR':
             return redirect('/dashboard/doctor')
         else:
             return redirect('/')
@@ -1189,7 +1187,7 @@ def exception_report():
 def default_dashboard():
     try:
         if 'user_id' not in session:  return redirect('/login')
-        if session['role'] != 'USER': return redirect('/dashboard/doctor')
+        if session['role'] != 'PATIENT': return redirect('/dashboard/doctor')
 
         return redirect(f'/dashboard/patient/{session['user_id']}')
     except Exception as ex:
@@ -1198,18 +1196,19 @@ def default_dashboard():
 
 @app.route('/dashboard/patient/<string:patient_id>')
 def dashboard_patient(patient_id):
-        if 'user_id' not in session:
-            return redirect('/login')
-
-        # Check access permissions
-        if session['role'] == 'USER' and str(session['user_id']) != str(patient_id):
-            return render_template('error.html', error="You don't have permission to view this dashboard",  redirect_url=f"/dashboard/patient/{patient_id}"), 403
+    try:
+        if 'user_id' not in session: return redirect('/login')
+        print(str(session['role']))
+        if session['role'] == 'PATIENT' and str(session['user_id']) != str(patient_id):
+            return render_template('error.html', error="You don't have permission to view this dashboard.",  redirect_url="/dashboard/patient"), 403
 
         patient_info = dbmanager.getByID('patient_report', patient_id)
-        readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ?', patient_id)
+        readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ? ORDER BY timestamp DESC', patient_id)
         notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
         return render_template('dashboard_patient.html',patient=patient_info, readings=readings, notifs=notifs,model_loaded=model is not None)
-
+    except Exception as ex:
+        print(f"Patient dashboard error: {ex}")
+        return render_template('error.html', error=str(ex))
 
 # ========== MISC CONTROLLER ==========
 
