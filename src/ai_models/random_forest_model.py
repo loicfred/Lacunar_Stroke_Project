@@ -107,8 +107,8 @@ def train_production_model():
         'bp_category',
         'on_bp_medication',
         'smoking_history',
-        'score_velocity',
-        'volatility_index'
+        'score_velocity', #To detect progressive deterioration
+        'volatility_index' #Stuttering pattern (fluctuation pattern of sensory readings over multiple measurements)
     ]
 
     # Add available pattern features
