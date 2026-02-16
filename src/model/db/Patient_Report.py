@@ -4,7 +4,7 @@ class Patient_Report:
         self.email = kwargs.get("email")
         self.role = kwargs.get("role")
 
-        self.patient_id = kwargs.get("patient_id")
+        self.patient_id = kwargs.get("id")
         self.age_group = kwargs.get("age_group")
         self.sex = kwargs.get("sex")
         self.smoking_history = kwargs.get("smoking_history")

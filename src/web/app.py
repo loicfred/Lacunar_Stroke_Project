@@ -1204,7 +1204,7 @@ def dashboard_patient(patient_id):
 
         patient_info = dbmanager.getByID('patient_report', patient_id)
         readings = dbmanager.getAllWhere('detailed_reading', 'patient_id = ? ORDER BY timestamp DESC', patient_id)
-        notifs = dbmanager.getAllWhere('notification', 'patient_id = ?', patient_id)
+        notifs = dbmanager.getAllWhere('notification', 'user_id = ?', patient_id)
         return render_template('dashboard_patient.html',patient=patient_info, readings=readings, notifs=notifs,model_loaded=model is not None)
     except Exception as ex:
         print(f"Patient dashboard error: {ex}")
