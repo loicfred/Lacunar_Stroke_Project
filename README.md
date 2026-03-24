@@ -1,7 +1,7 @@
 # Early detection of lacunar stroke for early diagnosis: An AI-Powered System for Continuous Bilateral Sensory Asymmetry Monitoring
 
 This program is our solution for a group project of **Research & Innovation** at university.
-The solution involves a web application made using Flask and a Random Forest AI Algorithm trained with a data which is used to predict and assess a risk level for lacunar stroke patients. The application and patient data is stored on a MariaDB database.
+The solution involves a web application made using Flask and a Random Forest AI Algorithm trained using a generated dataset. The algorithm is used to predict and assess a risk level for lacunar stroke patients. The application and patient data is stored on a MariaDB database.
 
 The application's actors involve Doctor and Patient, a user logged as a patient has access to their data and the prediction feature and a user logged as doctor has access to all their patients and statistical data.
 
