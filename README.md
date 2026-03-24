@@ -32,8 +32,8 @@ This dashboard allow doctors to view statistics and their patients. A doctor can
 <img width="1700" height="800" alt="image" src="https://github.com/user-attachments/assets/c6f70a60-c825-4dd1-9b10-cba081b1f219" />
 
 ## Prediction
-The prediction page is used to calculate the risk level by inputting the current data of the patient.
-Initially the data should be collected using sensors, but since this solution was more focused on the algorithm, we choose manual data input.
+The prediction page is used to calculate a patient risk level by inputting the current data of the patient.
+Initially the data should be collected using sensors, but since this solution had to be more focused on the algorithm, we chose manual data input.
 
 <img width="1700" height="800" alt="image" src="https://github.com/user-attachments/assets/47656111-914a-4029-9161-f5e0504d183c" />
 
