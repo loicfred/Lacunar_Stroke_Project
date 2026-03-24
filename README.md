@@ -5,6 +5,15 @@ The solution involves a web application made using Flask and a Random Forest AI 
 
 The application's actors involve Doctor and Patient, a user logged as a patient has access to their data and the prediction feature and a user logged as doctor has access to all their patients and statistical data.
 
+Contributors:
+- [Loïc Fred](https://github.com/loicfred)
+- [Morane Adisayam](https://github.com/Morane-Adisayam)
+- [Ra'eesah Bibi](https://github.com/Raeesah30)
+- [Diya Brijraj](https://github.com/DiyaBrij)
+
+Links:
+- [Research Paper PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Paper.pdf)
+- [Research Slides PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Slides.pdf)
 
 ## Login Page
 This allow a user to log as either a doctor or a patient. (role is defined in the user)
