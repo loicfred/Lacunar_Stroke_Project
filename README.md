@@ -8,8 +8,8 @@ The application's actors involve Doctor and Patient, a user logged as a patient 
 Contributors:
 - [Loïc Fred](https://github.com/loicfred)
 - [Morane Adisayam](https://github.com/Morane-Adisayam)
-- [Ra'eesah Bibi](https://github.com/Raeesah30)
-- [Diya Brijraj](https://github.com/DiyaBrij)
+- [Ra'eesah Bibi GoolamOssen](https://github.com/Raeesah30)
+- [Diya Devi Brijraj](https://github.com/DiyaBrij)
 
 Links:
 - [Research Paper PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Paper.pdf)
