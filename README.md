@@ -12,8 +12,8 @@ Contributors:
 - 💜 [Diya Devi Brijrajh](https://github.com/DiyaBrij)
 
 Links:
-- [Research Paper PDF (11 pages)](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Paper.pdf)
-- [Research Slides PDF (14 slides)](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Slides.pdf)
+- [Research Paper PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Paper.pdf) (11 pages)
+- [Research Slides PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Slides.pdf) (14 slides)
 
 ## Login Page
 This allow a user to log as either a doctor or a patient. (role is defined in the user)
