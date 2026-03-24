@@ -6,13 +6,12 @@ import logging
 
 from datetime import datetime
 import model.database as dbmanager
-from model.sample.PatientDetails import PatientDetails
 
 logging.basicConfig(level=logging.INFO)
 
 from flask import Flask, render_template, jsonify, request, redirect, session
-from src.model.auth import auth_bp  # Import auth blueprint
-from src.model.notifications import notifications_bp  # Import notifications blueprint
+from web.auth import auth_bp  # Import auth blueprint
+from web.notifications import notifications_bp  # Import notifications blueprint
 import data_simulation.patient_generator as patient_gen
 import random
 import sys
