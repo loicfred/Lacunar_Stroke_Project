@@ -5,13 +5,13 @@ The solution involves a web application made using **Flask** and a **Random Fore
 
 The application's actors involve Doctor and Patient, a user logged as a patient has access to their data and the prediction feature and a user logged as doctor has access to all their patients and statistical data.
 
-Contributors:
+**Contributors:**
 - ❤️ [Loïc Fred](https://github.com/loicfred)
 - 💙 [Morane Adisayam](https://github.com/Morane-Adisayam)
 - 💚 [Ra'eesah Bibi GoolamOssen](https://github.com/Raeesah30)
 - 💜 [Diya Devi Brijrajh](https://github.com/DiyaBrij)
 
-Links:
+**Links:**
 - [Research Paper PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Paper.pdf) (11 pages)
 - [Research Slides PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Slides.pdf) (14 slides)
 
