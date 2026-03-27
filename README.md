@@ -15,6 +15,14 @@ The application's actors involve Doctor and Patient, a user logged as a patient 
 - [Research Paper PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Paper.pdf) (11 pages)
 - [Research Slides PDF](https://github.com/loicfred/Lacunar_Stroke_Project/blob/master/Final%20Research%20Slides.pdf) (14 slides)
 
+**Applied Skills:**
+- Information Gathering
+- Literature Reviewing
+- English Writing
+- Python Flask Web Application
+- Random Forest Algorithm
+- Data Analysis
+
 ## Login Page
 This allow a user to log as either a doctor or a patient. (role is defined in the user)
 
