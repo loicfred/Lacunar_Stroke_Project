@@ -49,3 +49,8 @@ Initially the data should be collected using sensors, but since this solution ha
 The results are then shown and adding to the database records of the patient with the current data and values input.
 
 <img width="725" alt="image" src="https://github.com/user-attachments/assets/095e528e-59a7-4e50-88a0-769b9be594d8" />
+
+
+
+**Disclaimer**
+- Note that the website information is entirely fictituous and does not belongs to any real organization.
