@@ -14,13 +14,16 @@ from model.db.Notification import Notification
 from model.db.Patient_Info import Patient_Info
 from model.db.Reading import Reading
 
+from dotenv import load_dotenv
+load_dotenv()
+
 def get_connection():
     return mariadb.connect(
-        user="Lacunar",
-        password="LacunarStroke1234",
-        host="54.37.40.206",
-        port=3306,
-        database="lacunar_stroke"
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        database=os.getenv("DB_NAME")
     )
 
 ENTITY_REGISTRY = {

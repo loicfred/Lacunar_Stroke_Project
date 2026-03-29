@@ -9,6 +9,7 @@ jupyter>=1.0.0
 streamlit>=1.53.0
 mariadb>=1.0.0
 Werkzeug>=2.3.7
+python-dotenv>=1.0.0
 
 joblib
 pyarrow

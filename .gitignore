@@ -9,7 +9,7 @@ lacunar_stroke_project.iml
 __pycache__/
 *.pyc
 .DS_Store
-.env
+src/model/.env
 *.log
 *.csv
 *.h5
